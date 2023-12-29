@@ -14,9 +14,9 @@ Features
 To install BrickStoreSharp, you can use the NuGet package manager:
 
 
-´´´
+```
 Install-Package BrickStoreSharp
-´´´
+```
 
 Alternatively, you can clone this repository and build the library from source.
 
@@ -24,7 +24,7 @@ Alternatively, you can clone this repository and build the library from source.
 
 Here's a quick example to get you started:
 
-´´´csharp
+```csharp
 
 using BrickStoreSharp;
 
@@ -36,7 +36,7 @@ var inventory = BrickStoreInventory.Load("path/to/inventoryFile.bsx");
 
 // Save changes to a new file
 inventory.Save("path/to/newInventoryFile.bsx");
-´´´
+```
 
 For more detailed usage instructions, please refer to the documentation.
 
