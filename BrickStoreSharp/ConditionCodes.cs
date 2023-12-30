@@ -30,7 +30,7 @@ namespace BrickStoreSharp
     }
 
 
-    internal static class ConditionCodesExtensions
+    public static class ConditionCodesExtensions
     {
         public static ConditionCodes FromString(this ConditionCodes _c, string s)
         {

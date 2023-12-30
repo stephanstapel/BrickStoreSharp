@@ -31,7 +31,7 @@ namespace BrickStoreSharp
     }
 
 
-    internal static class StatusCodesExtensions
+    public static class StatusCodesExtensions
     {
         public static StatusCodes FromString(this StatusCodes _c, string s)
         {
