@@ -1,4 +1,4 @@
-[![NuGet](https://img.shields.io/nuget/v/ZUGFeRD-csharp?color=blue)](https://www.nuget.org/packages/BrickStoreSharp/)
+[![NuGet](https://img.shields.io/nuget/v/BrickStoreSharp?color=blue)](https://www.nuget.org/packages/BrickStoreSharp/)
 
 # BrickStoreSharp
 .net Adapter for reading and writing BrickStore inventory files
@@ -25,7 +25,7 @@ Install-Package BrickStoreSharp
 ```
 You can find more information about the nuget package here:
 
-[![NuGet](https://img.shields.io/nuget/v/ZUGFeRD-csharp?color=blue)](https://www.nuget.org/packages/BrickStoreSharp/)
+[![NuGet](https://img.shields.io/nuget/v/BrickStoreSharp?color=blue)](https://www.nuget.org/packages/BrickStoreSharp/)
 
 Alternatively, you can clone this repository and build the library from source.
 
