@@ -2,6 +2,23 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageReleaseNotes>1.0.0: Initial version</PackageReleaseNotes>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
+    <AssemblyName>BrickStoreSharp</AssemblyName>
+    <PackageId>BrickStoreSharp</PackageId>
+    <Authors>Stephan Stapel</Authors>
+    <PackageProjectUrl>https://github.com/stephanstapel/BrickStoreSharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/stephanstapel/BrickStoreSharp</RepositoryUrl>
+    <Description>BrickStoreSharp is a .NET Standard library designed for handling BrickStore inventory files with ease and efficiency. This library allows users to read and write BrickStore inventory files (https://github.com/rgriebl/brickstore), providing a streamlined approach for managing and manipulating LEGO brick inventories. Features
+* Read and write BrickStore inventory files
+* Compatible with .NET Standard 2.0
+* Simple and intuitive API
+
+Find more about the library here:
+https://github.com/stephanstapel/BrickStoreSharp</Description>
+    <IncludeSymbols>True</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
 </Project>
