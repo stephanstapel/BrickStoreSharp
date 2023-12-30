@@ -1,5 +1,12 @@
+[![NuGet](https://img.shields.io/nuget/v/ZUGFeRD-csharp?color=blue)](https://www.nuget.org/packages/ZUGFeRD-csharp/)
+
 # BrickStoreSharp
 .net Adapter for reading and writing BrickStore inventory files
+
+## Sponsoring
+Implementing and maintaining this library is a lot of hard work. I'm doing this in my spare time, there is no company behind developing BrickStoreSharp. Support me in this work and help making this library better:
+
+[:heart: Sponsor me on github](https://github.com/sponsors/stephanstapel)
 
 ## Overview
 BrickStoreSharp is a .NET Standard library designed for handling BrickStore inventory files with ease and efficiency. This library allows users to read and write BrickStore inventory files (https://github.com/rgriebl/brickstore), providing a streamlined approach for managing and manipulating LEGO brick inventories.
@@ -13,10 +20,11 @@ Features
 
 To install BrickStoreSharp, you can use the NuGet package manager:
 
-
 ```
 Install-Package BrickStoreSharp
 ```
+
+[![NuGet](https://img.shields.io/nuget/v/ZUGFeRD-csharp?color=blue)](https://www.nuget.org/packages/ZUGFeRD-csharp/)
 
 Alternatively, you can clone this repository and build the library from source.
 
