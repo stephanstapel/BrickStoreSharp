@@ -42,17 +42,20 @@ namespace BrickStoreSharp
             writer.WriteStartDocument();
 
             #region XML-Kopfbereich
+            if (!String.IsNullOrWhiteSpace(inventory.Comment))
+            {
+                writer.WriteComment(inventory.Comment);
+            }
             writer.WriteDocType("BrickStoreXML", null, null, null);
             writer.WriteStartElement("BrickStoreXML");
-            writer.WriteStartElement("Inventory");            
-            #endregion // !XML Header
+            writer.WriteStartElement("Inventory");
+            #endregion // !XML Header                       
 
-
-            foreach(BrickStoreInventoryItem item in inventory.Items)
+            foreach (BrickStoreInventoryItem item in inventory.Items)
             {
                 writer.WriteStartElement("Item");
                 writer.WriteElementString("ItemID", item.Id);
-                writer.WriteElementString("ItemTypeID", item.ItemTypeId);
+                writer.WriteElementString("ItemTypeID", _mapItemType(item.ItemType));
 
                 if (item.ColorId.HasValue)
                 {
@@ -60,7 +63,7 @@ namespace BrickStoreSharp
                 }
 
                 writer.WriteElementString("ItemName", item.Name);
-                writer.WriteElementString("ItemTypeName", item.ItemType);
+                writer.WriteElementString("ItemTypeName", _mapItemTypeName(item.ItemType));
 
                 writer.WriteElementString("ColorName", item.ColorName);
                 writer.WriteElementString("Status", item.Status.EnumToString());
@@ -72,7 +75,7 @@ namespace BrickStoreSharp
 
                 if (item.Price.HasValue)
                 {
-                    writer.WriteElementString("Price", item.Price.Value.ToString("N4"));
+                    writer.WriteElementString("Price", item.Price.Value.ToString("N4").Replace(",", "."));
                 }
 
                 writer.WriteElementString("Condition", item.Condition.EnumToString());
@@ -93,6 +96,40 @@ namespace BrickStoreSharp
 
             await Task.CompletedTask;
         } // !SaveAsync()
+
+
+        private string _mapItemType(ItemTypes itemType)
+        {
+            switch (itemType)
+            {
+                case ItemTypes.Book: return "B";
+                case ItemTypes.Catalog: return "C";
+                case ItemTypes.Gear: return "G";
+                case ItemTypes.Instruction: return "I";
+                case ItemTypes.Minifigure: return "M";
+                case ItemTypes.OriginalBox: return "O";
+                case ItemTypes.Part: return "P";
+                case ItemTypes.Set: return "S";
+                default: return ""; // oder eine andere Standardbehandlung
+            }
+        } // !_mapItemType()
+
+
+        private string _mapItemTypeName(ItemTypes itemType)
+        {
+            switch (itemType)
+            {
+                case ItemTypes.Book: return "Book";
+                case ItemTypes.Catalog: return "Catalog";
+                case ItemTypes.Gear: return "Gear";
+                case ItemTypes.Instruction: return "Instruction";
+                case ItemTypes.Minifigure: return "Minifig";
+                case ItemTypes.OriginalBox: return "OriginalBox";
+                case ItemTypes.Part: return "Part";
+                case ItemTypes.Set: return "Set";
+                default: return ""; // oder eine andere Standardbehandlung
+            }
+        } // !_mapItemTypeName()
 
 
         public async Task SaveAsync(BrickStoreInventory inventory, string filename)

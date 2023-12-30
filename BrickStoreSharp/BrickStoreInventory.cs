@@ -28,6 +28,7 @@ namespace BrickStoreSharp
 {
     public class BrickStoreInventory
     {
+        public string Comment { get; set; }
         public List<BrickStoreInventoryItem> Items { get; set; } = new List<BrickStoreInventoryItem>();
         public string Currency { get; set; }
         public int? BrickLinkChangelogId { get; set; }

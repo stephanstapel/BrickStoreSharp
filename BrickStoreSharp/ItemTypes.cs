@@ -18,27 +18,20 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
 
 namespace BrickStoreSharp
 {
-    public class BrickStoreInventoryItem
+    public enum ItemTypes
     {
-        public string Id { get; set; }
-        public ItemTypes ItemType { get; set; }
-        public int? ColorId { get; set; }
-        public string Name { get; set; }        
-        public string ColorName { get; set; }
-        public StatusCodes Status { get; set; }
-        public int? Quantity { get; set; }
-        public decimal? Price { get; set; }
-        public ConditionCodes Condition { get; set; }
-        public string Remarks { get; set; }
-        public int? LotId { get; set; }
-        public int? OwlId { get; set; }
-        public int? OwlLotId { get; set; }
-}
+        Unknown,
+        Catalog,
+        Part,
+        Set,
+        Minifigure,
+        Gear,
+        Instruction,
+        OriginalBox,
+        Book
+    }
 }

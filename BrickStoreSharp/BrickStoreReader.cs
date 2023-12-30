@@ -64,10 +64,9 @@ namespace BrickStoreSharp
                 BrickStoreInventoryItem item = new BrickStoreInventoryItem()
                 {
                     Id = XmlUtils.NodeAsString(itemNode, "./ItemID"),
-                    ItemTypeId = XmlUtils.NodeAsString(itemNode, "./ItemTypeID"),
+                    ItemType = _mapItemType(XmlUtils.NodeAsString(itemNode, "./ItemTypeID")),
                     ColorId = XmlUtils.NodeAsInt(itemNode, "./ColorID"),
-                    Name = XmlUtils.NodeAsString(itemNode, "./ItemName"),
-                    ItemType = XmlUtils.NodeAsString(itemNode, "./ItemTypeName"),
+                    Name = XmlUtils.NodeAsString(itemNode, "./ItemName"),                    
                     ColorName = XmlUtils.NodeAsString(itemNode, "./ColorName"),
                     Status = default(StatusCodes).FromString(XmlUtils.NodeAsString(itemNode, "./Status")),
                     Quantity = XmlUtils.NodeAsInt(itemNode, "./Qty"),
@@ -85,6 +84,22 @@ namespace BrickStoreSharp
 
             return retval;
         } // !LoadAsync()
+
+        private static ItemTypes _mapItemType(string itemType)
+        {
+            switch (itemType.ToLower())
+            {
+                case "b": return ItemTypes.Book;
+                case "c": return ItemTypes.Catalog;
+                case "g": return ItemTypes.Gear;
+                case "i": return ItemTypes.Instruction;
+                case "m": return ItemTypes.Minifigure;
+                case "o": return ItemTypes.OriginalBox;
+                case "p": return ItemTypes.Part;
+                case "s": return ItemTypes.Set;                
+            }
+            return ItemTypes.Unknown;
+        } // !_mapItemType()
 
 
         internal static async Task<BrickStoreInventory> LoadAsync(string filename)
