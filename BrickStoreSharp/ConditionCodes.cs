@@ -36,7 +36,9 @@ namespace BrickStoreSharp
         {
             switch (s)
             {
+                case "New":
                 case "N": return ConditionCodes.New;
+                case "Used":
                 case "U": return ConditionCodes.Used;
                 default: return ConditionCodes.Unknown;
             }
