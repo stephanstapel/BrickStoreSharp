@@ -64,7 +64,7 @@ namespace BrickStoreSharp
             }
             else
             {
-                if ((value.Trim().ToLower() == "true") || (value.Trim() == "1"))
+                if (string.Equals(value.Trim(), "true", StringComparison.OrdinalIgnoreCase) || (value.Trim() == "1"))
                 {
                     return true;
                 }

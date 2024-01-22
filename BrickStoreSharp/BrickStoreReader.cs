@@ -74,7 +74,7 @@ namespace BrickStoreSharp
                     Condition = default(ConditionCodes).FromString(XmlUtils.NodeAsString(itemNode, "./Condition")),
                     Remarks = XmlUtils.NodeAsString(itemNode, "./Remarks"),
                     LotId = XmlUtils.NodeAsInt(itemNode, "./LotID"),
-                    OwlId = XmlUtils.NodeAsInt(itemNode, "./OwlID"),
+                    OwlId = XmlUtils.NodeAsString(itemNode, "./OwlID"),
                     OwlLotId = XmlUtils.NodeAsInt(itemNode, "./OwlLotID")
                 };
 

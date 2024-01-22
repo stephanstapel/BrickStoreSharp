@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -64,9 +65,14 @@ namespace BrickStoreSharp
 
                 writer.WriteElementString("ItemName", item.Name);
                 writer.WriteElementString("ItemTypeName", _mapItemTypeName(item.ItemType));
-
                 writer.WriteElementString("ColorName", item.ColorName);
-                writer.WriteElementString("Status", item.Status.EnumToString());
+                writer.WriteElementString("CategoryID", $"{item.CategoryId}");
+                writer.WriteElementString("CategoryName", item.CategoryName);
+
+                if (item.Status != StatusCodes.Unknown)
+                {
+                    writer.WriteElementString("Status", item.Status.EnumToString());
+                }
 
                 if (item.Quantity.HasValue)
                 {
@@ -79,10 +85,59 @@ namespace BrickStoreSharp
                 }
 
                 writer.WriteElementString("Condition", item.Condition.EnumToString());
-                writer.WriteElementString("Remarks", item.Remarks);
+                writer.WriteElementString("Bulk", $"{item.Bulk}");
+                writer.WriteElementString("Sale", $"{item.Sale}");
+
+                if (!String.IsNullOrWhiteSpace(item.Comments))
+                {
+                    writer.WriteElementString("Comments", item.Comments);
+                }
+
+                if (!String.IsNullOrWhiteSpace(item.Remarks))
+                {
+                    writer.WriteElementString("Remarks", item.Remarks);
+                }
+
+                if (item.Retain)
+                {
+                    writer.WriteStartElement("Retain");
+                    writer.WriteEndElement();
+                }
+
                 writer.WriteElementString("LotID", $"{item.LotId}");
                 writer.WriteElementString("OwlID", $"{item.OwlId}");
                 writer.WriteElementString("OwlLotID", $"{item.OwlLotId}");
+
+                if (item.TieredPrice != null)
+                {
+                    if (item.TieredPrice.TieredQuantity1 != 0)
+                    {
+                        writer.WriteElementString("TQ1", $"{item.TieredPrice.TieredQuantity1}");
+                        writer.WriteElementString("TP1", item.TieredPrice.TieredPrice1.ToString("N4").Replace(",", "."));
+                    }
+
+                    if (item.TieredPrice.TieredQuantity2 != 0)
+                    {
+                        writer.WriteElementString("TQ2", $"{item.TieredPrice.TieredQuantity2}");
+                        writer.WriteElementString("TP2", item.TieredPrice.TieredPrice2.ToString("N4").Replace(",", "."));
+                    }
+
+                    if (item.TieredPrice.TieredQuantity3 != 0)
+                    {
+                        writer.WriteElementString("TQ3", $"{item.TieredPrice.TieredQuantity3}");
+                        writer.WriteElementString("TP3", item.TieredPrice.TieredPrice3.ToString("N4").Replace(",", "."));
+                    }
+                }
+
+                if (!String.IsNullOrWhiteSpace(_mapSubCondition(item.SubCondition)))
+                {
+                    writer.WriteElementString("SubCondition", _mapSubCondition(item.SubCondition));
+                }
+
+                if (!String.IsNullOrWhiteSpace(item.Stockroom))
+                {
+                    writer.WriteElementString("Stockroom", item.Stockroom);
+                }
 
                 writer.WriteEndElement(); // !Item
             }
@@ -96,6 +151,18 @@ namespace BrickStoreSharp
 
             await Task.CompletedTask;
         } // !SaveAsync()
+
+
+        private string _mapSubCondition(SubConditions subcondition)
+        {
+            switch (subcondition)
+            {        
+                case SubConditions.Complete: return "C";
+                case SubConditions.Incomplete: return "I";
+                case SubConditions.Sealed: return "M";
+            }
+            return String.Empty;
+        } // !_mapSubCondition()
 
 
         private string _mapItemType(ItemTypes itemType)
