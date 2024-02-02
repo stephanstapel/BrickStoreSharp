@@ -59,14 +59,14 @@ namespace BrickStoreSharp
                 BrickLinkChangelogId = XmlUtils.NodeAsInt(doc.DocumentElement, "./BrickLinkChangelogId")
             };
 
-            Parallel.ForEach(doc.DocumentElement.SelectNodes("./Inventory/Item").Cast<XmlNode>(), (XmlNode itemNode) =>
+            foreach(XmlNode itemNode in doc.DocumentElement.SelectNodes("./Inventory/Item"))
             {
                 BrickStoreInventoryItem item = new BrickStoreInventoryItem()
                 {
                     Id = XmlUtils.NodeAsString(itemNode, "./ItemID"),
                     ItemType = _mapItemType(XmlUtils.NodeAsString(itemNode, "./ItemTypeID")),
                     ColorId = XmlUtils.NodeAsInt(itemNode, "./ColorID"),
-                    Name = XmlUtils.NodeAsString(itemNode, "./ItemName"),                    
+                    Name = XmlUtils.NodeAsString(itemNode, "./ItemName"),
                     ColorName = XmlUtils.NodeAsString(itemNode, "./ColorName"),
                     Status = default(StatusCodes).FromString(XmlUtils.NodeAsString(itemNode, "./Status")),
                     Quantity = XmlUtils.NodeAsInt(itemNode, "./Qty"),
@@ -78,9 +78,8 @@ namespace BrickStoreSharp
                     OwlLotId = XmlUtils.NodeAsInt(itemNode, "./OwlLotID")
                 };
 
-
                 retval.Items.Add(item);
-            });
+            }
 
             return retval;
         } // !LoadAsync()
