@@ -52,7 +52,7 @@ namespace BrickStoreSharp
 
         public static bool NodeAsBool(XmlNode node, string xpath, XmlNamespaceManager nsmgr = null, bool defaultValue = true)
         {
-            if (node == null)
+            if (node is null)
             {
                 return defaultValue;
             }
@@ -78,7 +78,7 @@ namespace BrickStoreSharp
 
         public static string NodeAsString(XmlNode node, string xpath, XmlNamespaceManager nsmgr = null, string defaultValue = "")
         {
-            if (node == null)
+            if (node is null)
             {
                 return defaultValue;
             }            
@@ -86,7 +86,7 @@ namespace BrickStoreSharp
             try
             {
                 XmlNode _node = node.SelectSingleNode(xpath, nsmgr);
-                if (_node == null)
+                if (_node is null)
                 {
                     return defaultValue;
                 }
@@ -108,7 +108,7 @@ namespace BrickStoreSharp
 
         public static List<string> NodesAsStrings(XmlNode node, string xpath, XmlNamespaceManager nsmgr = null, List<string> defaultValue = null)
         {
-            if (node == null)
+            if (node is null)
             {
                 return defaultValue;
             }
@@ -137,7 +137,7 @@ namespace BrickStoreSharp
 
         public static int? NodeAsInt(XmlNode node, string xpath, XmlNamespaceManager nsmgr = null, int? defaultValue = null)
         {
-            if (node == null)
+            if (node is null)
             {
                 return defaultValue;
             }
@@ -157,7 +157,7 @@ namespace BrickStoreSharp
 
         public static decimal? NodeAsDecimal(XmlNode node, string xpath, XmlNamespaceManager nsmgr = null, decimal? defaultValue = null)
         {
-            if (node == null)
+            if (node is null)
             {
                 return defaultValue;
             }
@@ -177,7 +177,7 @@ namespace BrickStoreSharp
 
         public static DateTime? NodeAsDateTime(XmlNode node, string xpath, XmlNamespaceManager nsmgr = null, DateTime? defaultValue = null)
         {
-            if (node == null)
+            if (node is null)
             {
                 return defaultValue;
             }
