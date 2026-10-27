@@ -73,7 +73,12 @@ namespace BrickStoreSharp
 
             // Currency and BrickLinkChangelogId are attributes of <Inventory>, see BrickStoreXML.rnc
             XmlNode inventoryNode = doc.DocumentElement.SelectSingleNode("./Inventory");
-            BrickStoreInventory retval = new BrickStoreInventory();
+            BrickStoreInventory retval = new BrickStoreInventory()
+            {
+                // the writer stores Comment as XML comment in front of the root element
+                Comment = doc.ChildNodes.OfType<XmlNode>().TakeWhile(n => n != doc.DocumentElement).OfType<XmlComment>().FirstOrDefault()?.Value
+            };
+
             if (inventoryNode != null)
             {
                 retval.Currency = XmlUtils.AttributeText(inventoryNode, "Currency", null);

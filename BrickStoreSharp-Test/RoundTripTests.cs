@@ -427,5 +427,26 @@ namespace BrickStoreSharp_Test
                 TestData.DeleteFile(secondPath);
             }
         }
+
+
+        [DataTestMethod]
+        [DataRow("created by test")]
+        [DataRow(" leading and trailing blanks ")]
+        [DataRow("multi\nline\ncomment")]
+        [DataRow("Gr\u00fc\u00dfe <b> & \"quotes\" \U0001F9F1")]
+        public void RoundTrip_PreservesComment(string comment)
+        {
+            Assert.AreEqual(comment, _roundTrip(new BrickStoreInventory() { Comment = comment }).Comment);
+        }
+
+
+        [DataTestMethod]
+        [DataRow(null)]
+        [DataRow("")]
+        [DataRow("   ")]
+        public void RoundTrip_EmptyCommentIsNull(string? comment)
+        {
+            Assert.IsNull(_roundTrip(new BrickStoreInventory() { Comment = comment! }).Comment);
+        }
     }
 }

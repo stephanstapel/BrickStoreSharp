@@ -11,6 +11,7 @@
 * All supported item fields survive save/load; default values and empty elements are no longer written
 * New item properties Reserved, Cost, TotalWeight, MarkerText and MarkerColor
 * Elements not interpreted by the library (e.g. DifferenceBaseValues, GuiState) are kept in AdditionalElements and written back unchanged
+* Inventory comment is read back when loading
 * External entities are never resolved when loading
 * Breaking: synchronous Load/Save throw the original exception instead of AggregateException; missing optional text elements load as null
 1.0.0: Initial version</PackageReleaseNotes>

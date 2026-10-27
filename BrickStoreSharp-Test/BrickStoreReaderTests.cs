@@ -313,5 +313,42 @@ namespace BrickStoreSharp_Test
             Assert.AreEqual(0, inventory.AdditionalElements.Count);
             Assert.IsTrue(inventory.Items.All(i => i.AdditionalElements.Count == 0));
         }
+
+
+        [TestMethod]
+        public void Load_ReadsCommentInFrontOfRoot()
+        {
+            string path = TestData.CreateTempFile("<?xml version=\"1.0\"?><!-- my inventory --><!DOCTYPE BrickStoreXML><BrickStoreXML><Inventory/></BrickStoreXML>");
+            try
+            {
+                Assert.AreEqual(" my inventory ", BrickStoreInventory.Load(path).Comment);
+            }
+            finally
+            {
+                TestData.DeleteFile(path);
+            }
+        }
+
+
+        [TestMethod]
+        public void Load_IgnoresCommentsInsideDocument()
+        {
+            string path = TestData.CreateTempFile("<BrickStoreXML><!-- inside --><Inventory><!-- item comment --></Inventory></BrickStoreXML><!-- trailing -->");
+            try
+            {
+                Assert.IsNull(BrickStoreInventory.Load(path).Comment);
+            }
+            finally
+            {
+                TestData.DeleteFile(path);
+            }
+        }
+
+
+        [TestMethod]
+        public void Load_WithoutCommentIsNull()
+        {
+            Assert.IsNull(BrickStoreInventory.Load(_path).Comment);
+        }
     }
 }
