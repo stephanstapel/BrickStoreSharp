@@ -9,11 +9,11 @@ Implementing and maintaining this library is a lot of hard work. I'm doing this 
 [:heart: Sponsor me on github](https://github.com/sponsors/stephanstapel)
 
 ## Overview
-BrickStoreSharp is a .NET Standard library designed for handling BrickStore inventory files with ease and efficiency. This library allows users to read and write BrickStore inventory files (https://github.com/rgriebl/brickstore), providing a streamlined approach for managing and manipulating LEGO brick inventories.
+BrickStoreSharp is a .NET library designed for handling BrickStore inventory files with ease and efficiency. This library allows users to read and write BrickStore inventory files (https://github.com/rgriebl/brickstore), providing a streamlined approach for managing and manipulating LEGO brick inventories.
 Features
 
 * Read and write BrickStore inventory files
-* Compatible with .NET Standard 2.0
+* Compatible with .NET Standard 2.0, .NET 8 and .NET 10
 * Simple and intuitive API
 
 ## Installation
