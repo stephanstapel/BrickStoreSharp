@@ -247,5 +247,71 @@ namespace BrickStoreSharp_Test
                 Assert.AreEqual(2, inventory.Items.Count);
             }
         }
+
+
+        [TestMethod]
+        public void Load_ReadsExtendedFields()
+        {
+            string path = TestData.CreateTempFile(TestData.InventoryWithExtras);
+            try
+            {
+                BrickStoreInventoryItem item = BrickStoreInventory.Load(path).Items.Single();
+
+                Assert.AreEqual("buyer42", item.Reserved);
+                Assert.AreEqual(0.1m, item.Cost);
+                Assert.AreEqual(23.4m, item.TotalWeight);
+                Assert.AreEqual("check", item.MarkerText);
+                Assert.AreEqual("#ff0000", item.MarkerColor);
+            }
+            finally
+            {
+                TestData.DeleteFile(path);
+            }
+        }
+
+
+        [TestMethod]
+        public void Load_KeepsUnknownItemElements()
+        {
+            string path = TestData.CreateTempFile(TestData.InventoryWithExtras);
+            try
+            {
+                BrickStoreInventoryItem item = BrickStoreInventory.Load(path).Items.Single();
+
+                CollectionAssert.AreEqual(new[] { "OrigQty", "DifferenceBaseValues" }, item.AdditionalElements.Select(e => e.Name).ToArray());
+                Assert.AreEqual("8", item.AdditionalElements[1].GetAttribute("Qty"));
+            }
+            finally
+            {
+                TestData.DeleteFile(path);
+            }
+        }
+
+
+        [TestMethod]
+        public void Load_KeepsGuiState()
+        {
+            string path = TestData.CreateTempFile(TestData.InventoryWithExtras);
+            try
+            {
+                BrickStoreInventory inventory = BrickStoreInventory.Load(path);
+
+                Assert.AreEqual("GuiState", inventory.AdditionalElements.Single().Name);
+            }
+            finally
+            {
+                TestData.DeleteFile(path);
+            }
+        }
+
+
+        [TestMethod]
+        public void Load_KnownElementsAreNotAdditional()
+        {
+            BrickStoreInventory inventory = BrickStoreInventory.Load(_path);
+
+            Assert.AreEqual(0, inventory.AdditionalElements.Count);
+            Assert.IsTrue(inventory.Items.All(i => i.AdditionalElements.Count == 0));
+        }
     }
 }

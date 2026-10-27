@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace BrickStoreSharp
@@ -129,5 +130,36 @@ namespace BrickStoreSharp
         public int Sale { get; set; } = 0;
 
         public SubConditions SubCondition { get; set; } = SubConditions.Unknown;
+
+        /// <summary>
+        /// Name of the buyer this item is reserved for
+        /// </summary>
+        public string Reserved { get; set; }
+
+        /// <summary>
+        /// The seller's cost for this item
+        /// </summary>
+        public decimal? Cost { get; set; }
+
+        /// <summary>
+        /// Total weight of this lot in grams (catalog weight * quantity, if not overridden)
+        /// </summary>
+        public decimal? TotalWeight { get; set; }
+
+        /// <summary>
+        /// Free text marker shown in BrickStore
+        /// </summary>
+        public string MarkerText { get; set; }
+
+        /// <summary>
+        /// Marker color in BrickStore, format #RRGGBB
+        /// </summary>
+        public string MarkerColor { get; set; }
+
+        /// <summary>
+        /// Item elements this library does not interpret (e.g. DifferenceBaseValues, OrigQty).
+        /// They are read and written unchanged so no data gets lost on save.
+        /// </summary>
+        public List<XmlElement> AdditionalElements { get; set; } = new List<XmlElement>();
     }
 }

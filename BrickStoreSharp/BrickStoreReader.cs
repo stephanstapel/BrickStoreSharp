@@ -17,6 +17,7 @@
  * under the License.
  */
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -27,6 +28,17 @@ namespace BrickStoreSharp
 {
     internal class BrickStoreReader
     {
+        /// <summary>
+        /// Item elements mapped to properties of BrickStoreInventoryItem, everything else is kept in AdditionalElements
+        /// </summary>
+        private static readonly HashSet<string> _KnownItemElements = new HashSet<string>()
+        {
+            "ItemID", "ItemTypeID", "ColorID", "ItemName", "ItemTypeName", "ColorName", "CategoryID", "CategoryName",
+            "Status", "Qty", "Price", "Condition", "Bulk", "Sale", "Comments", "Remarks", "Retain", "Reserved",
+            "LotID", "OwlID", "OwlLotID", "TQ1", "TP1", "TQ2", "TP2", "TQ3", "TP3", "TotalWeight", "Cost",
+            "SubCondition", "Stockroom", "MarkerText", "MarkerColor"
+        };
+
         internal static BrickStoreInventory Load(string filename)
         {
             return LoadAsync(filename).GetAwaiter().GetResult();
@@ -94,7 +106,13 @@ namespace BrickStoreSharp
                     Retain = XmlUtils.SelectSingleNode(itemNode, "./Retain") != null,
                     Stockroom = XmlUtils.NodeAsString(itemNode, "./Stockroom", defaultValue: null),
                     SubCondition = default(SubConditions).FromCode(XmlUtils.NodeAsString(itemNode, "./SubCondition")),
-                    TieredPrice = _readTieredPrice(itemNode)
+                    TieredPrice = _readTieredPrice(itemNode),
+                    Reserved = XmlUtils.NodeAsString(itemNode, "./Reserved", defaultValue: null),
+                    Cost = XmlUtils.NodeAsDecimal(itemNode, "./Cost"),
+                    TotalWeight = XmlUtils.NodeAsDecimal(itemNode, "./TotalWeight"),
+                    MarkerText = XmlUtils.NodeAsString(itemNode, "./MarkerText", defaultValue: null),
+                    MarkerColor = XmlUtils.NodeAsString(itemNode, "./MarkerColor", defaultValue: null),
+                    AdditionalElements = itemNode.ChildNodes.OfType<XmlElement>().Where(e => !_KnownItemElements.Contains(e.Name)).ToList()
                 };
 
                 // keep the item's defaults if the optional elements are missing
@@ -112,6 +130,9 @@ namespace BrickStoreSharp
 
                 retval.Items.Add(item);
             }
+
+            // e.g. GuiState, kept to not lose it on save
+            retval.AdditionalElements = doc.DocumentElement.ChildNodes.OfType<XmlElement>().Where(e => e.Name != "Inventory").ToList();
 
             return retval;
         } // !LoadAsync()

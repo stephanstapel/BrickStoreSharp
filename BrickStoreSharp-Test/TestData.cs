@@ -42,6 +42,34 @@ namespace BrickStoreSharp_Test
             """;
 
 
+        /// <summary>
+        /// Inventory using elements this library does not interpret (DifferenceBaseValues, OrigQty, GuiState)
+        /// </summary>
+        public const string InventoryWithExtras = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <BrickStoreXML>
+              <Inventory Currency="USD">
+                <Item>
+                  <ItemID>3001</ItemID>
+                  <ItemTypeID>P</ItemTypeID>
+                  <ColorID>5</ColorID>
+                  <Qty>10</Qty>
+                  <Price>0.25</Price>
+                  <Condition>N</Condition>
+                  <Reserved>buyer42</Reserved>
+                  <Cost>0.1</Cost>
+                  <TotalWeight>23.4</TotalWeight>
+                  <MarkerText>check</MarkerText>
+                  <MarkerColor>#ff0000</MarkerColor>
+                  <OrigQty>8</OrigQty>
+                  <DifferenceBaseValues ItemID="3001" ItemTypeID="P" ColorID="5" Qty="8" Price="0.2"/>
+                </Item>
+              </Inventory>
+              <GuiState Application="BrickStore" Version="2"><ItemView><SortColumn>3</SortColumn></ItemView></GuiState>
+            </BrickStoreXML>
+            """;
+
+
         public static string CreateTempFile(string content)
         {
             string path = Path.Combine(Path.GetTempPath(), $"BrickStoreSharp-Test-{Guid.NewGuid():N}.bsx");

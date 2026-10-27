@@ -22,6 +22,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace BrickStoreSharp
@@ -32,6 +33,12 @@ namespace BrickStoreSharp
         public List<BrickStoreInventoryItem> Items { get; set; } = new List<BrickStoreInventoryItem>();
         public string Currency { get; set; }
         public int? BrickLinkChangelogId { get; set; }
+
+        /// <summary>
+        /// Elements next to the inventory this library does not interpret (e.g. BrickStore's GuiState).
+        /// They are read and written unchanged so no data gets lost on save.
+        /// </summary>
+        public List<XmlElement> AdditionalElements { get; set; } = new List<XmlElement>();
 
 
 

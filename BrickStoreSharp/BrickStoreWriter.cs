@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -163,11 +164,27 @@ namespace BrickStoreSharp
                 }
 
                 _writeOptionalElement(writer, "Stockroom", item.Stockroom);
+                _writeOptionalElement(writer, "Reserved", item.Reserved);
+
+                if (item.Cost.HasValue)
+                {
+                    writer.WriteElementString("Cost", item.Cost.Value.ToString("0.0000", CultureInfo.InvariantCulture));
+                }
+
+                if (item.TotalWeight.HasValue)
+                {
+                    writer.WriteElementString("TotalWeight", item.TotalWeight.Value.ToString(CultureInfo.InvariantCulture));
+                }
+
+                _writeOptionalElement(writer, "MarkerText", item.MarkerText);
+                _writeOptionalElement(writer, "MarkerColor", item.MarkerColor);
+                _writeAdditionalElements(writer, item.AdditionalElements);
 
                 writer.WriteEndElement(); // !Item
             }
 
             writer.WriteEndElement(); // !Inventory
+            _writeAdditionalElements(writer, inventory.AdditionalElements);
             writer.WriteEndElement(); // !BrickStoreXML
             writer.WriteEndDocument();
             writer.Flush();
@@ -185,6 +202,20 @@ namespace BrickStoreSharp
                 writer.WriteElementString(name, value);
             }
         } // !_writeOptionalElement()
+
+
+        private static void _writeAdditionalElements(XmlTextWriter writer, List<XmlElement> elements)
+        {
+            if (elements == null)
+            {
+                return;
+            }
+
+            foreach (XmlElement element in elements.Where(e => e != null))
+            {
+                element.WriteTo(writer);
+            }
+        } // !_writeAdditionalElements()
 
 
         public async Task SaveAsync(BrickStoreInventory inventory, string filename)

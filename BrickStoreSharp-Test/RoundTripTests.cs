@@ -1,3 +1,4 @@
+using System.Xml;
 using BrickStoreSharp;
 
 namespace BrickStoreSharp_Test
@@ -166,6 +167,62 @@ namespace BrickStoreSharp_Test
             BrickStoreInventory result = _roundTrip(inventory);
 
             CollectionAssert.AreEqual(inventory.Items.Select(i => i.Id).ToList(), result.Items.Select(i => i.Id).ToList());
+        }
+
+
+        [TestMethod]
+        public void RoundTrip_PreservesExtendedFields()
+        {
+            BrickStoreInventoryItem result = _roundTrip(new BrickStoreInventoryItem()
+            {
+                Id = "x",
+                Reserved = "buyer42",
+                Cost = 0.1m,
+                TotalWeight = 23.4m,
+                MarkerText = "check",
+                MarkerColor = "#ff0000"
+            });
+
+            Assert.AreEqual("buyer42", result.Reserved);
+            Assert.AreEqual(0.1m, result.Cost);
+            Assert.AreEqual(23.4m, result.TotalWeight);
+            Assert.AreEqual("check", result.MarkerText);
+            Assert.AreEqual("#ff0000", result.MarkerColor);
+        }
+
+
+        [TestMethod]
+        public void RoundTrip_BrickStoreFileKeepsAllElements()
+        {
+            string sourcePath = TestData.CreateTempFile(TestData.InventoryWithExtras);
+            string targetPath = TestData.CreateTempFileName();
+            try
+            {
+                BrickStoreInventory.Load(sourcePath).Save(targetPath);
+
+                XmlDocument source = new XmlDocument();
+                source.Load(sourcePath);
+                XmlDocument target = new XmlDocument();
+                target.Load(targetPath);
+
+                // every element of the original file must still be there
+                foreach (string xpath in new[] { "/BrickStoreXML/Inventory/Item", "/BrickStoreXML" })
+                {
+                    List<string> sourceNames = source.SelectSingleNode(xpath)!.ChildNodes.OfType<XmlElement>().Select(e => e.Name).ToList();
+                    List<string> targetNames = target.SelectSingleNode(xpath)!.ChildNodes.OfType<XmlElement>().Select(e => e.Name).ToList();
+                    CollectionAssert.IsSubsetOf(sourceNames, targetNames, xpath);
+                }
+
+                Assert.AreEqual("USD", target.SelectSingleNode("/BrickStoreXML/Inventory/@Currency")?.Value);
+                Assert.AreEqual("3", target.SelectSingleNode("/BrickStoreXML/GuiState/ItemView/SortColumn")?.InnerText);
+                Assert.AreEqual("0.2", target.SelectSingleNode("//DifferenceBaseValues/@Price")?.Value);
+                Assert.AreEqual("8", target.SelectSingleNode("//OrigQty")?.InnerText);
+            }
+            finally
+            {
+                TestData.DeleteFile(sourcePath);
+                TestData.DeleteFile(targetPath);
+            }
         }
     }
 }

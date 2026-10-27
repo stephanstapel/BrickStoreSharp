@@ -328,5 +328,69 @@ namespace BrickStoreSharp_Test
                 TestData.DeleteFile(path);
             }
         }
+
+
+        [TestMethod]
+        public void Save_WritesExtendedFields()
+        {
+            BrickStoreInventoryItem source = _createItem();
+            source.Reserved = "buyer42";
+            source.Cost = 0.1m;
+            source.TotalWeight = 23.4m;
+            source.MarkerText = "check";
+            source.MarkerColor = "#ff0000";
+
+            XmlNode item = _saveSingleItem(source);
+
+            Assert.AreEqual("buyer42", item.SelectSingleNode("Reserved")?.InnerText);
+            Assert.AreEqual("0.1000", item.SelectSingleNode("Cost")?.InnerText);
+            Assert.AreEqual("23.4", item.SelectSingleNode("TotalWeight")?.InnerText);
+            Assert.AreEqual("check", item.SelectSingleNode("MarkerText")?.InnerText);
+            Assert.AreEqual("#ff0000", item.SelectSingleNode("MarkerColor")?.InnerText);
+        }
+
+
+        [TestMethod]
+        public void Save_OmitsExtendedFieldsWhenUnset()
+        {
+            XmlNode item = _saveSingleItem(_createItem());
+
+            Assert.IsNull(item.SelectSingleNode("Reserved"));
+            Assert.IsNull(item.SelectSingleNode("Cost"));
+            Assert.IsNull(item.SelectSingleNode("TotalWeight"));
+            Assert.IsNull(item.SelectSingleNode("MarkerText"));
+            Assert.IsNull(item.SelectSingleNode("MarkerColor"));
+        }
+
+
+        [TestMethod]
+        public void Save_WritesAdditionalElements()
+        {
+            XmlDocument source = new XmlDocument();
+            source.LoadXml("<root><OrigQty>8</OrigQty><GuiState Version=\"2\"/></root>");
+
+            BrickStoreInventoryItem item = _createItem();
+            item.AdditionalElements.Add((XmlElement)source.DocumentElement!.FirstChild!);
+            BrickStoreInventory inventory = new BrickStoreInventory();
+            inventory.Items.Add(item);
+            inventory.AdditionalElements.Add((XmlElement)source.DocumentElement.LastChild!);
+
+            XmlDocument doc = _save(inventory);
+
+            Assert.AreEqual("8", doc.SelectSingleNode("/BrickStoreXML/Inventory/Item/OrigQty")?.InnerText);
+            Assert.AreEqual("2", doc.SelectSingleNode("/BrickStoreXML/GuiState/@Version")?.Value);
+        }
+
+
+        [TestMethod]
+        public void Save_IgnoresNullAdditionalElements()
+        {
+            BrickStoreInventory inventory = new BrickStoreInventory() { AdditionalElements = null! };
+            BrickStoreInventoryItem item = _createItem();
+            item.AdditionalElements.Add(null!);
+            inventory.Items.Add(item);
+
+            Assert.AreEqual(1, _save(inventory).SelectNodes("/BrickStoreXML/Inventory/Item")!.Count);
+        }
     }
 }
