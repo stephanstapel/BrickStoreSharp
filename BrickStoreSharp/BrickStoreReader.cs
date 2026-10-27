@@ -17,6 +17,7 @@
  * under the License.
  */
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,17 +29,13 @@ namespace BrickStoreSharp
     {
         internal static BrickStoreInventory Load(string filename)
         {
-            Task<BrickStoreInventory> t = LoadAsync(filename);
-            t.Wait();
-            return t.Result;
+            return LoadAsync(filename).GetAwaiter().GetResult();
         } // !Load()
 
 
         internal static BrickStoreInventory Load(Stream stream)
         {
-            Task<BrickStoreInventory> t = LoadAsync(stream);
-            t.Wait();
-            return t.Result;
+            return LoadAsync(stream).GetAwaiter().GetResult();
         } // !Load()
 
 
@@ -49,22 +46,37 @@ namespace BrickStoreSharp
                 throw new IllegalStreamException("Cannot read from stream");
             }
 
-            // read the file            
-            XmlDocument doc = new XmlDocument();
-            doc.Load(stream);
-
-            BrickStoreInventory retval = new BrickStoreInventory()
+            // read the file, DTDs are not needed and must not resolve external entities
+            XmlReaderSettings settings = new XmlReaderSettings()
             {
-                Currency = XmlUtils.NodeAsString(doc.DocumentElement, "./Currency"),
-                BrickLinkChangelogId = XmlUtils.NodeAsInt(doc.DocumentElement, "./BrickLinkChangelogId")
+                DtdProcessing = DtdProcessing.Ignore,
+                XmlResolver = null
             };
 
-            foreach(XmlNode itemNode in doc.DocumentElement.SelectNodes("./Inventory/Item"))
+            XmlDocument doc = new XmlDocument() { XmlResolver = null };
+            using (XmlReader reader = XmlReader.Create(stream, settings))
+            {
+                doc.Load(reader);
+            }
+
+            // Currency and BrickLinkChangelogId are attributes of <Inventory>, see BrickStoreXML.rnc
+            XmlNode inventoryNode = doc.DocumentElement.SelectSingleNode("./Inventory");
+            BrickStoreInventory retval = new BrickStoreInventory();
+            if (inventoryNode != null)
+            {
+                retval.Currency = XmlUtils.AttributeText(inventoryNode, "Currency", null);
+                if (Int32.TryParse(XmlUtils.AttributeText(inventoryNode, "BrickLinkChangelogId"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int changelogId))
+                {
+                    retval.BrickLinkChangelogId = changelogId;
+                }
+            }
+
+            foreach (XmlNode itemNode in doc.DocumentElement.SelectNodes("./Inventory/Item"))
             {
                 BrickStoreInventoryItem item = new BrickStoreInventoryItem()
                 {
                     Id = XmlUtils.NodeAsString(itemNode, "./ItemID"),
-                    ItemType = _mapItemType(XmlUtils.NodeAsString(itemNode, "./ItemTypeID")),
+                    ItemType = default(ItemTypes).FromCode(XmlUtils.NodeAsString(itemNode, "./ItemTypeID")),
                     ColorId = XmlUtils.NodeAsInt(itemNode, "./ColorID"),
                     Name = XmlUtils.NodeAsString(itemNode, "./ItemName"),
                     ColorName = XmlUtils.NodeAsString(itemNode, "./ColorName"),
@@ -75,8 +87,28 @@ namespace BrickStoreSharp
                     Remarks = XmlUtils.NodeAsString(itemNode, "./Remarks"),
                     LotId = XmlUtils.NodeAsInt(itemNode, "./LotID"),
                     OwlId = XmlUtils.NodeAsString(itemNode, "./OwlID"),
-                    OwlLotId = XmlUtils.NodeAsInt(itemNode, "./OwlLotID")
+                    OwlLotId = XmlUtils.NodeAsInt(itemNode, "./OwlLotID"),
+                    CategoryId = XmlUtils.NodeAsInt(itemNode, "./CategoryID") ?? 0,
+                    CategoryName = XmlUtils.NodeAsString(itemNode, "./CategoryName", defaultValue: null),
+                    Comments = XmlUtils.NodeAsString(itemNode, "./Comments", defaultValue: null),
+                    Retain = XmlUtils.SelectSingleNode(itemNode, "./Retain") != null,
+                    Stockroom = XmlUtils.NodeAsString(itemNode, "./Stockroom", defaultValue: null),
+                    SubCondition = default(SubConditions).FromCode(XmlUtils.NodeAsString(itemNode, "./SubCondition")),
+                    TieredPrice = _readTieredPrice(itemNode)
                 };
+
+                // keep the item's defaults if the optional elements are missing
+                int? bulk = XmlUtils.NodeAsInt(itemNode, "./Bulk");
+                if (bulk.HasValue)
+                {
+                    item.Bulk = bulk.Value;
+                }
+
+                int? sale = XmlUtils.NodeAsInt(itemNode, "./Sale");
+                if (sale.HasValue)
+                {
+                    item.Sale = sale.Value;
+                }
 
                 retval.Items.Add(item);
             }
@@ -84,31 +116,36 @@ namespace BrickStoreSharp
             return retval;
         } // !LoadAsync()
 
-        private static ItemTypes _mapItemType(string itemType)
+
+        private static TieredPrice _readTieredPrice(XmlNode itemNode)
         {
-            switch (itemType.ToLower())
+            int? tq1 = XmlUtils.NodeAsInt(itemNode, "./TQ1");
+            int? tq2 = XmlUtils.NodeAsInt(itemNode, "./TQ2");
+            int? tq3 = XmlUtils.NodeAsInt(itemNode, "./TQ3");
+            if (!tq1.HasValue && !tq2.HasValue && !tq3.HasValue)
             {
-                case "b": return ItemTypes.Book;
-                case "c": return ItemTypes.Catalog;
-                case "g": return ItemTypes.Gear;
-                case "i": return ItemTypes.Instruction;
-                case "m": return ItemTypes.Minifigure;
-                case "o": return ItemTypes.OriginalBox;
-                case "p": return ItemTypes.Part;
-                case "s": return ItemTypes.Set;                
+                return null;
             }
-            return ItemTypes.Unknown;
-        } // !_mapItemType()
+
+            return new TieredPrice()
+            {
+                TieredQuantity1 = tq1 ?? 0,
+                TieredPrice1 = XmlUtils.NodeAsDecimal(itemNode, "./TP1") ?? 0m,
+                TieredQuantity2 = tq2 ?? 0,
+                TieredPrice2 = XmlUtils.NodeAsDecimal(itemNode, "./TP2") ?? 0m,
+                TieredQuantity3 = tq3 ?? 0,
+                TieredPrice3 = XmlUtils.NodeAsDecimal(itemNode, "./TP3") ?? 0m
+            };
+        } // !_readTieredPrice()
 
 
         internal static async Task<BrickStoreInventory> LoadAsync(string filename)
         {
-            if (!System.IO.File.Exists(filename))
+            // throws FileNotFoundException including the file name if the file does not exist
+            using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
             {
-                throw new FileNotFoundException();
+                return await LoadAsync(fs);
             }
-
-            return await LoadAsync(new FileStream(filename, FileMode.Open, FileAccess.Read));
         } // !LoadAsync()
     }
 }

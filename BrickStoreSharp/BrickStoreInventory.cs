@@ -37,7 +37,7 @@ namespace BrickStoreSharp
 
         public async static Task<BrickStoreInventory> LoadAsync(Stream stream)
         {
-            return await BrickStoreInventory.LoadAsync(stream);
+            return await BrickStoreReader.LoadAsync(stream);
         } // !Load()
 
 
@@ -49,17 +49,13 @@ namespace BrickStoreSharp
 
         public static BrickStoreInventory Load(Stream stream)
         {
-            Task<BrickStoreInventory> t = LoadAsync(stream);
-            t.Wait();
-            return t.Result;
+            return LoadAsync(stream).GetAwaiter().GetResult();
         } // !Load()
 
 
         public static BrickStoreInventory Load(string filename)
         {
-            Task<BrickStoreInventory> t = LoadAsync(filename);
-            t.Wait();
-            return t.Result;
+            return LoadAsync(filename).GetAwaiter().GetResult();
         } // !Load()
 
 
@@ -79,15 +75,13 @@ namespace BrickStoreSharp
 
         public void Save(Stream stream)
         {
-            Task t = SaveAsync(stream);
-            t.Wait();
+            SaveAsync(stream).GetAwaiter().GetResult();
         } // !Save()
 
 
         public void Save(string filename)
         {
-            Task t = SaveAsync(filename);
-            t.Wait();
+            SaveAsync(filename).GetAwaiter().GetResult();
         } // !Save()
     }
 }
