@@ -70,16 +70,20 @@ namespace BrickStoreSharp
                 writer.WriteElementString("ItemID", item.Id);
                 writer.WriteElementString("ItemTypeID", item.ItemType.ToCode());
 
-                if (item.ColorId.HasValue)
+                // ColorID is required by BrickStoreXML.rnc, 0 is BrickLink's '(Not Applicable)' color
+                writer.WriteElementString("ColorID", (item.ColorId ?? 0).ToString(CultureInfo.InvariantCulture));
+
+                // optional elements: BrickStoreXML.rnc asks not to write them if they equal the default value
+                _writeOptionalElement(writer, "ItemName", item.Name);
+                _writeOptionalElement(writer, "ItemTypeName", item.ItemType.ToName());
+                _writeOptionalElement(writer, "ColorName", item.ColorName);
+
+                if (item.CategoryId != 0)
                 {
-                    writer.WriteElementString("ColorID", $"{item.ColorId}");
+                    writer.WriteElementString("CategoryID", item.CategoryId.ToString(CultureInfo.InvariantCulture));
                 }
 
-                writer.WriteElementString("ItemName", item.Name);
-                writer.WriteElementString("ItemTypeName", item.ItemType.ToName());
-                writer.WriteElementString("ColorName", item.ColorName);
-                writer.WriteElementString("CategoryID", $"{item.CategoryId}");
-                writer.WriteElementString("CategoryName", item.CategoryName);
+                _writeOptionalElement(writer, "CategoryName", item.CategoryName);
 
                 if (item.Status != StatusCodes.Unknown)
                 {
@@ -101,18 +105,18 @@ namespace BrickStoreSharp
                     writer.WriteElementString("Condition", item.Condition.ToCode());
                 }
 
-                writer.WriteElementString("Bulk", $"{item.Bulk}");
-                writer.WriteElementString("Sale", $"{item.Sale}");
-
-                if (!String.IsNullOrWhiteSpace(item.Comments))
+                if (item.Bulk != 1)
                 {
-                    writer.WriteElementString("Comments", item.Comments);
+                    writer.WriteElementString("Bulk", item.Bulk.ToString(CultureInfo.InvariantCulture));
                 }
 
-                if (!String.IsNullOrWhiteSpace(item.Remarks))
+                if (item.Sale != 0)
                 {
-                    writer.WriteElementString("Remarks", item.Remarks);
+                    writer.WriteElementString("Sale", item.Sale.ToString(CultureInfo.InvariantCulture));
                 }
+
+                _writeOptionalElement(writer, "Comments", item.Comments);
+                _writeOptionalElement(writer, "Remarks", item.Remarks);
 
                 if (item.Retain)
                 {
@@ -120,9 +124,17 @@ namespace BrickStoreSharp
                     writer.WriteEndElement();
                 }
 
-                writer.WriteElementString("LotID", $"{item.LotId}");
-                writer.WriteElementString("OwlID", $"{item.OwlId}");
-                writer.WriteElementString("OwlLotID", $"{item.OwlLotId}");
+                if (item.LotId.HasValue && item.LotId.Value != 0)
+                {
+                    writer.WriteElementString("LotID", item.LotId.Value.ToString(CultureInfo.InvariantCulture));
+                }
+
+                _writeOptionalElement(writer, "OwlID", item.OwlId);
+
+                if (item.OwlLotId.HasValue)
+                {
+                    writer.WriteElementString("OwlLotID", item.OwlLotId.Value.ToString(CultureInfo.InvariantCulture));
+                }
 
                 if (item.TieredPrice != null)
                 {
@@ -150,10 +162,7 @@ namespace BrickStoreSharp
                     writer.WriteElementString("SubCondition", item.SubCondition.ToCode());
                 }
 
-                if (!String.IsNullOrWhiteSpace(item.Stockroom))
-                {
-                    writer.WriteElementString("Stockroom", item.Stockroom);
-                }
+                _writeOptionalElement(writer, "Stockroom", item.Stockroom);
 
                 writer.WriteEndElement(); // !Item
             }
@@ -167,6 +176,15 @@ namespace BrickStoreSharp
 
             await Task.CompletedTask;
         } // !SaveAsync()
+
+
+        private static void _writeOptionalElement(XmlTextWriter writer, string name, string value)
+        {
+            if (!String.IsNullOrWhiteSpace(value))
+            {
+                writer.WriteElementString(name, value);
+            }
+        } // !_writeOptionalElement()
 
 
         public async Task SaveAsync(BrickStoreInventory inventory, string filename)

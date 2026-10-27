@@ -125,6 +125,22 @@ namespace BrickStoreSharp_Test
 
 
         [TestMethod]
+        public void RoundTrip_PreservesDefaults()
+        {
+            BrickStoreInventoryItem result = _roundTrip(new BrickStoreInventoryItem() { Id = "x", ItemType = ItemTypes.Part });
+
+            Assert.AreEqual(1, result.Bulk);
+            Assert.AreEqual(0, result.Sale);
+            Assert.AreEqual(0, result.CategoryId);
+            Assert.IsFalse(result.Retain);
+            Assert.IsNull(result.LotId);
+            Assert.IsNull(result.OwlLotId);
+            Assert.IsNull(result.TieredPrice);
+            Assert.AreEqual(SubConditions.Unknown, result.SubCondition);
+        }
+
+
+        [TestMethod]
         public void RoundTrip_PreservesInventoryHeader()
         {
             BrickStoreInventory result = _roundTrip(new BrickStoreInventory()

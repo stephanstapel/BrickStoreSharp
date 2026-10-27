@@ -2,9 +2,18 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <PackageReleaseNotes>1.0.0: Initial version</PackageReleaseNotes>
-    <AssemblyVersion>1.1.0</AssemblyVersion>
-    <FileVersion>1.1.0</FileVersion>
+    <PackageReleaseNotes>1.2.0:
+* Fixed endless recursion when loading from a stream
+* Fixed file handles not being released
+* Prices are written culture-invariant (prices &gt;= 1000 were corrupted)
+* Status, condition, item type and sub condition are written as BrickStore codes
+* Currency and BrickLinkChangelogId are read/written as attributes of &lt;Inventory&gt;
+* All supported item fields survive save/load; default values and empty elements are no longer written
+* External entities are never resolved when loading
+* Breaking: synchronous Load/Save throw the original exception instead of AggregateException; missing optional text elements load as null
+1.0.0: Initial version</PackageReleaseNotes>
+    <AssemblyVersion>1.2.0</AssemblyVersion>
+    <FileVersion>1.2.0</FileVersion>
     <AssemblyName>BrickStoreSharp</AssemblyName>
     <PackageId>BrickStoreSharp</PackageId>
     <Authors>Stephan Stapel</Authors>
@@ -19,7 +28,7 @@ Find more about the library here:
 https://github.com/stephanstapel/BrickStoreSharp</Description>
     <IncludeSymbols>True</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
   </PropertyGroup>
 
 </Project>

@@ -120,7 +120,16 @@ namespace BrickStoreSharp_Test
         {
             XmlNode item = _saveSingleItem(new BrickStoreInventoryItem() { Id = "3001", ItemType = ItemTypes.Part });
 
-            Assert.IsNull(item.SelectSingleNode("ColorID"));
+            Assert.IsNull(item.SelectSingleNode("ItemName"));
+            Assert.IsNull(item.SelectSingleNode("ColorName"));
+            Assert.IsNull(item.SelectSingleNode("CategoryID"));
+            Assert.IsNull(item.SelectSingleNode("CategoryName"));
+            Assert.IsNull(item.SelectSingleNode("Bulk"));
+            Assert.IsNull(item.SelectSingleNode("Sale"));
+            Assert.IsNull(item.SelectSingleNode("LotID"));
+            Assert.IsNull(item.SelectSingleNode("OwlID"));
+            Assert.IsNull(item.SelectSingleNode("OwlLotID"));
+            Assert.IsNull(item.SelectSingleNode("Retain"));
             Assert.IsNull(item.SelectSingleNode("Status"));
             Assert.IsNull(item.SelectSingleNode("Qty"));
             Assert.IsNull(item.SelectSingleNode("Price"));
@@ -129,6 +138,51 @@ namespace BrickStoreSharp_Test
             Assert.IsNull(item.SelectSingleNode("Stockroom"));
             Assert.IsNull(item.SelectSingleNode("Condition"));
             Assert.IsNull(item.SelectSingleNode("SubCondition"));
+        }
+
+
+        [TestMethod]
+        public void Save_WritesRequiredElementsOnly()
+        {
+            // only ItemID, ItemTypeID and ColorID are required by BrickStoreXML.rnc
+            XmlNode item = _saveSingleItem(new BrickStoreInventoryItem() { Id = "3001", ItemType = ItemTypes.Part });
+
+            CollectionAssert.AreEqual(new[] { "ItemID", "ItemTypeID", "ColorID", "ItemTypeName" }, item.ChildNodes.Cast<XmlNode>().Select(n => n.Name).ToArray());
+        }
+
+
+        [TestMethod]
+        public void Save_WritesColorIdZeroWhenUnset()
+        {
+            XmlNode item = _saveSingleItem(new BrickStoreInventoryItem() { Id = "3001", ItemType = ItemTypes.Part });
+
+            Assert.AreEqual("0", item.SelectSingleNode("ColorID")?.InnerText);
+        }
+
+
+        [TestMethod]
+        public void Save_OmitsWhitespaceOnlyStrings()
+        {
+            XmlNode item = _saveSingleItem(new BrickStoreInventoryItem() { Id = "3001", Name = " ", Remarks = "", Comments = "  ", Stockroom = "" });
+
+            Assert.IsNull(item.SelectSingleNode("ItemName"));
+            Assert.IsNull(item.SelectSingleNode("Remarks"));
+            Assert.IsNull(item.SelectSingleNode("Comments"));
+            Assert.IsNull(item.SelectSingleNode("Stockroom"));
+        }
+
+
+        [TestMethod]
+        public void Save_WritesOwlFieldsWhenSet()
+        {
+            BrickStoreInventoryItem source = _createItem();
+            source.OwlId = "987";
+            source.OwlLotId = 654;
+
+            XmlNode item = _saveSingleItem(source);
+
+            Assert.AreEqual("987", item.SelectSingleNode("OwlID")?.InnerText);
+            Assert.AreEqual("654", item.SelectSingleNode("OwlLotID")?.InnerText);
         }
 
 
