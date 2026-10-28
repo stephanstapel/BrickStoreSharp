@@ -13,8 +13,13 @@
 * New item properties Reserved, Cost, TotalWeight, MarkerText and MarkerColor
 * Elements not interpreted by the library (e.g. DifferenceBaseValues, GuiState) are kept in AdditionalElements and written back unchanged
 * Inventory comment is read back when loading
+* Saving to a file writes a temporary file first, an existing file is never destroyed by a failed save
+* Invalid XML characters throw on save instead of producing unreadable files
+* Prices and cost are no longer rounded to four decimals
+* Item types unknown to the library are written back unchanged
+* Faster loading: each item is read in a single pass
 * External entities are never resolved when loading
-* Breaking: synchronous Load/Save throw the original exception instead of AggregateException; missing optional text elements load as null
+* Breaking: synchronous Load/Save throw the original exception instead of AggregateException; missing text elements load as null
 1.0.0: Initial version</PackageReleaseNotes>
     <AssemblyVersion>1.2.0</AssemblyVersion>
     <FileVersion>1.2.0</FileVersion>

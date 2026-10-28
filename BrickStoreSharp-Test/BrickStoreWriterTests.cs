@@ -290,7 +290,7 @@ namespace BrickStoreSharp_Test
         {
             using (MemoryStream ms = new MemoryStream())
             {
-                ms.Write(new byte[] { 1, 2, 3 });
+                ms.Write(new byte[] { 1, 2, 3 }, 0, 3);
                 new BrickStoreInventory().Save(ms);
 
                 Assert.AreEqual(3, ms.Position);
@@ -391,6 +391,116 @@ namespace BrickStoreSharp_Test
             inventory.Items.Add(item);
 
             Assert.AreEqual(1, _save(inventory).SelectNodes("/BrickStoreXML/Inventory/Item")!.Count);
+        }
+
+
+        [DataTestMethod]
+        [DataRow("Box\u0001")]
+        [DataRow("Box\uFFFF")]
+        public void Save_InvalidXmlCharacterThrows(string remarks)
+        {
+            BrickStoreInventoryItem item = _createItem();
+            item.Remarks = remarks;
+            BrickStoreInventory inventory = new BrickStoreInventory();
+            inventory.Items.Add(item);
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                Assert.ThrowsException<ArgumentException>(() => inventory.Save(ms));
+            }
+        }
+
+
+        [TestMethod]
+        public void Save_FailureKeepsExistingFile()
+        {
+            string path = TestData.CreateTempFileName();
+            try
+            {
+                BrickStoreInventory inventory = new BrickStoreInventory();
+                inventory.Items.Add(_createItem());
+                inventory.Save(path);
+                string original = File.ReadAllText(path);
+
+                inventory.Items[0].Remarks = "invalid \u0001";
+                Assert.ThrowsException<ArgumentException>(() => inventory.Save(path));
+
+                Assert.AreEqual(original, File.ReadAllText(path));
+                Assert.AreEqual(0, Directory.GetFiles(Path.GetDirectoryName(path)!, Path.GetFileName(path) + ".*.tmp").Length, "temporary file left behind");
+            }
+            finally
+            {
+                TestData.DeleteFile(path);
+            }
+        }
+
+
+        [TestMethod]
+        public void Save_FailureWithoutExistingFileCreatesNoFile()
+        {
+            string path = TestData.CreateTempFileName();
+            BrickStoreInventory inventory = new BrickStoreInventory();
+            inventory.Items.Add(new BrickStoreInventoryItem() { Id = "invalid " });
+
+            Assert.ThrowsException<ArgumentException>(() => inventory.Save(path));
+
+            Assert.IsFalse(File.Exists(path));
+            Assert.AreEqual(0, Directory.GetFiles(Path.GetDirectoryName(path)!, Path.GetFileName(path) + ".*.tmp").Length, "temporary file left behind");
+        }
+
+
+        [TestMethod]
+        public void Save_CommentWithDoubleHyphenStaysValid()
+        {
+            // '--' is not allowed in XML comments, XmlWriter separates the hyphens instead of failing
+            XmlDocument doc = _save(new BrickStoreInventory() { Comment = "a -- b" });
+
+            Assert.AreEqual("a - - b", doc.ChildNodes.OfType<XmlComment>().Single().Value);
+        }
+
+
+        [TestMethod]
+        public void Save_OverwritesExistingFile()
+        {
+            string path = TestData.CreateTempFile("old content");
+            try
+            {
+                new BrickStoreInventory() { Currency = "EUR" }.Save(path);
+
+                XmlDocument doc = new XmlDocument();
+                doc.Load(path);
+                Assert.AreEqual("EUR", doc.SelectSingleNode("/BrickStoreXML/Inventory/@Currency")?.Value);
+            }
+            finally
+            {
+                TestData.DeleteFile(path);
+            }
+        }
+
+
+        [TestMethod]
+        public void Save_DoesNotRoundPrices()
+        {
+            BrickStoreInventoryItem source = _createItem();
+            source.Price = 0.123456m;
+            source.Cost = 1234.000001m;
+            source.TieredPrice = new TieredPrice() { TieredQuantity1 = 10, TieredPrice1 = 0.00001m };
+
+            XmlNode item = _saveSingleItem(source);
+
+            Assert.AreEqual("0.123456", item.SelectSingleNode("Price")?.InnerText);
+            Assert.AreEqual("1234.000001", item.SelectSingleNode("Cost")?.InnerText);
+            Assert.AreEqual("0.00001", item.SelectSingleNode("TP1")?.InnerText);
+        }
+
+
+        [TestMethod]
+        public void Save_WritesItemTypeIdOnce()
+        {
+            XmlNode item = _saveSingleItem(_createItem());
+
+            Assert.AreEqual(1, item.SelectNodes("ItemTypeID")!.Count);
+            Assert.AreEqual(1, item.SelectNodes("ItemTypeName")!.Count);
         }
     }
 }

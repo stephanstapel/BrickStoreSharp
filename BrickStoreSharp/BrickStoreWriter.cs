@@ -21,7 +21,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -30,6 +29,11 @@ namespace BrickStoreSharp
 {
     internal class BrickStoreWriter
     {
+        /// <summary>
+        /// At least four decimals like BrickStore, but never rounds away more precise values
+        /// </summary>
+        private const string _PriceFormat = "0.0000########################";
+
         internal async Task SaveAsync(BrickStoreInventory inventory, Stream stream)
         {
             if (!stream.CanWrite || !stream.CanSeek)
@@ -40,8 +44,15 @@ namespace BrickStoreSharp
             long streamPosition = stream.Position;
 
             
-            XmlTextWriter writer = new XmlTextWriter(stream, Encoding.UTF8);
-            writer.Formatting = Formatting.Indented;
+            // XmlWriter.Create checks characters and comments, so invalid input throws instead of producing unreadable files
+            XmlWriterSettings settings = new XmlWriterSettings()
+            {
+                Encoding = Encoding.UTF8,
+                Indent = true,
+                CloseOutput = false
+            };
+
+            XmlWriter writer = XmlWriter.Create(stream, settings);
             writer.WriteStartDocument();
 
             #region XML-Kopfbereich
@@ -69,7 +80,11 @@ namespace BrickStoreSharp
             {
                 writer.WriteStartElement("Item");
                 writer.WriteElementString("ItemID", item.Id);
-                writer.WriteElementString("ItemTypeID", item.ItemType.ToCode());
+                // an item type unknown to this library is kept in AdditionalElements by the reader
+                if ((item.ItemType != ItemTypes.Unknown) || !_containsElement(item.AdditionalElements, "ItemTypeID"))
+                {
+                    writer.WriteElementString("ItemTypeID", item.ItemType.ToCode());
+                }
 
                 // ColorID is required by BrickStoreXML.rnc, 0 is BrickLink's '(Not Applicable)' color
                 writer.WriteElementString("ColorID", (item.ColorId ?? 0).ToString(CultureInfo.InvariantCulture));
@@ -98,7 +113,7 @@ namespace BrickStoreSharp
 
                 if (item.Price.HasValue)
                 {
-                    writer.WriteElementString("Price", item.Price.Value.ToString("0.0000", CultureInfo.InvariantCulture));
+                    writer.WriteElementString("Price", item.Price.Value.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                 }
 
                 if (item.Condition != ConditionCodes.Unknown)
@@ -142,19 +157,19 @@ namespace BrickStoreSharp
                     if (item.TieredPrice.TieredQuantity1 != 0)
                     {
                         writer.WriteElementString("TQ1", $"{item.TieredPrice.TieredQuantity1}");
-                        writer.WriteElementString("TP1", item.TieredPrice.TieredPrice1.ToString("0.0000", CultureInfo.InvariantCulture));
+                        writer.WriteElementString("TP1", item.TieredPrice.TieredPrice1.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                     }
 
                     if (item.TieredPrice.TieredQuantity2 != 0)
                     {
                         writer.WriteElementString("TQ2", $"{item.TieredPrice.TieredQuantity2}");
-                        writer.WriteElementString("TP2", item.TieredPrice.TieredPrice2.ToString("0.0000", CultureInfo.InvariantCulture));
+                        writer.WriteElementString("TP2", item.TieredPrice.TieredPrice2.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                     }
 
                     if (item.TieredPrice.TieredQuantity3 != 0)
                     {
                         writer.WriteElementString("TQ3", $"{item.TieredPrice.TieredQuantity3}");
-                        writer.WriteElementString("TP3", item.TieredPrice.TieredPrice3.ToString("0.0000", CultureInfo.InvariantCulture));
+                        writer.WriteElementString("TP3", item.TieredPrice.TieredPrice3.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                     }
                 }
 
@@ -168,7 +183,7 @@ namespace BrickStoreSharp
 
                 if (item.Cost.HasValue)
                 {
-                    writer.WriteElementString("Cost", item.Cost.Value.ToString("0.0000", CultureInfo.InvariantCulture));
+                    writer.WriteElementString("Cost", item.Cost.Value.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                 }
 
                 if (item.TotalWeight.HasValue)
@@ -195,7 +210,13 @@ namespace BrickStoreSharp
         } // !SaveAsync()
 
 
-        private static void _writeOptionalElement(XmlTextWriter writer, string name, string value)
+        private static bool _containsElement(List<XmlElement> elements, string name)
+        {
+            return (elements != null) && elements.Any(e => (e != null) && (e.Name == name));
+        } // !_containsElement()
+
+
+        private static void _writeOptionalElement(XmlWriter writer, string name, string value)
         {
             if (!String.IsNullOrWhiteSpace(value))
             {
@@ -204,7 +225,7 @@ namespace BrickStoreSharp
         } // !_writeOptionalElement()
 
 
-        private static void _writeAdditionalElements(XmlTextWriter writer, List<XmlElement> elements)
+        private static void _writeAdditionalElements(XmlWriter writer, List<XmlElement> elements)
         {
             if (elements == null)
             {
@@ -220,10 +241,32 @@ namespace BrickStoreSharp
 
         public async Task SaveAsync(BrickStoreInventory inventory, string filename)
         {
-            using (FileStream fs = new FileStream(filename, FileMode.Create, FileAccess.Write))
+            // write to a temporary file first, so an existing file is not destroyed if writing fails
+            string fullPath = Path.GetFullPath(filename);
+            string tempPath = Path.Combine(Path.GetDirectoryName(fullPath), $"{Path.GetFileName(fullPath)}.{Guid.NewGuid():N}.tmp");
+            try
             {
-                await SaveAsync(inventory, fs);
-                fs.Flush();
+                using (FileStream fs = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write))
+                {
+                    await SaveAsync(inventory, fs);
+                    fs.Flush();
+                }
+
+                if (File.Exists(fullPath))
+                {
+                    File.Replace(tempPath, fullPath, null);
+                }
+                else
+                {
+                    File.Move(tempPath, fullPath);
+                }
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
             }
         } // !SaveAsync()
     }

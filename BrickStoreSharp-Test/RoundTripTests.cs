@@ -448,5 +448,80 @@ namespace BrickStoreSharp_Test
         {
             Assert.IsNull(_roundTrip(new BrickStoreInventory() { Comment = comment! }).Comment);
         }
+
+
+        [TestMethod]
+        public void RoundTrip_KeepsUnknownItemType()
+        {
+            string sourcePath = TestData.CreateTempFile(TestData.InventoryWithUnknownItemType);
+            string targetPath = TestData.CreateTempFileName();
+            try
+            {
+                BrickStoreInventory.Load(sourcePath).Save(targetPath);
+
+                XmlDocument target = new XmlDocument();
+                target.Load(targetPath);
+                XmlNodeList typeIds = target.SelectNodes("//Item/ItemTypeID")!;
+                Assert.AreEqual(1, typeIds.Count);
+                Assert.AreEqual("U", typeIds[0]!.InnerText);
+                Assert.AreEqual("Unsorted Lot", target.SelectSingleNode("//Item/ItemTypeName")?.InnerText);
+            }
+            finally
+            {
+                TestData.DeleteFile(sourcePath);
+                TestData.DeleteFile(targetPath);
+            }
+        }
+
+
+        [TestMethod]
+        public void RoundTrip_WritesEveryElementOnce()
+        {
+            string sourcePath = TestData.CreateTempFile(TestData.InventoryWithExtras);
+            string targetPath = TestData.CreateTempFileName();
+            try
+            {
+                BrickStoreInventory.Load(sourcePath).Save(targetPath);
+
+                XmlDocument target = new XmlDocument();
+                target.Load(targetPath);
+                List<string> names = target.SelectSingleNode("//Item")!.ChildNodes.OfType<XmlElement>().Select(e => e.Name).ToList();
+                CollectionAssert.AllItemsAreUnique(names);
+            }
+            finally
+            {
+                TestData.DeleteFile(sourcePath);
+                TestData.DeleteFile(targetPath);
+            }
+        }
+
+
+        [TestMethod]
+        public void RoundTrip_PreservesPrecision()
+        {
+            BrickStoreInventoryItem result = _roundTrip(new BrickStoreInventoryItem()
+            {
+                Id = "x",
+                Price = 0.123456m,
+                Cost = 1234.000001m,
+                TieredPrice = new TieredPrice() { TieredQuantity1 = 10, TieredPrice1 = 0.00001m }
+            });
+
+            Assert.AreEqual(0.123456m, result.Price);
+            Assert.AreEqual(1234.000001m, result.Cost);
+            Assert.AreEqual(0.00001m, result.TieredPrice?.TieredPrice1);
+        }
+
+
+        [TestMethod]
+        public void RoundTrip_UnsetStringsStayNull()
+        {
+            BrickStoreInventoryItem result = _roundTrip(new BrickStoreInventoryItem() { Id = "x" });
+
+            Assert.IsNull(result.Name);
+            Assert.IsNull(result.ColorName);
+            Assert.IsNull(result.Remarks);
+            Assert.IsNull(result.OwlId);
+        }
     }
 }

@@ -72,6 +72,9 @@ namespace BrickStoreSharp_Test
 
             Assert.AreEqual(ItemTypes.Minifigure, item.ItemType); // lower case type id
             Assert.IsNull(item.ColorId);
+            Assert.IsNull(item.ColorName);
+            Assert.IsNull(item.Remarks);
+            Assert.IsNull(item.OwlId);
             Assert.IsNull(item.LotId);
             Assert.AreEqual(StatusCodes.Exclude, item.Status);
             Assert.AreEqual(ConditionCodes.Used, item.Condition);
@@ -349,6 +352,65 @@ namespace BrickStoreSharp_Test
         public void Load_WithoutCommentIsNull()
         {
             Assert.IsNull(BrickStoreInventory.Load(_path).Comment);
+        }
+
+
+        [TestMethod]
+        public void Load_KeepsUnknownItemTypeUnchanged()
+        {
+            string path = TestData.CreateTempFile(TestData.InventoryWithUnknownItemType);
+            try
+            {
+                BrickStoreInventoryItem item = BrickStoreInventory.Load(path).Items.Single();
+
+                Assert.AreEqual(ItemTypes.Unknown, item.ItemType);
+                CollectionAssert.AreEqual(new[] { "ItemTypeID", "ItemTypeName" }, item.AdditionalElements.Select(e => e.Name).ToArray());
+            }
+            finally
+            {
+                TestData.DeleteFile(path);
+            }
+        }
+
+
+        [TestMethod]
+        public void Load_AdditionalElementsDoNotReferenceLoadedDocument()
+        {
+            string path = TestData.CreateTempFile(TestData.InventoryWithExtras);
+            try
+            {
+                BrickStoreInventory inventory = BrickStoreInventory.Load(path);
+
+                // the elements are imported into an otherwise empty document, the loaded file is not kept alive
+                foreach (System.Xml.XmlElement element in inventory.AdditionalElements.Concat(inventory.Items.Single().AdditionalElements))
+                {
+                    Assert.IsNull(element.ParentNode, element.Name);
+                    Assert.IsNull(element.OwnerDocument.DocumentElement, element.Name);
+                }
+            }
+            finally
+            {
+                TestData.DeleteFile(path);
+            }
+        }
+
+
+        [TestMethod]
+        public void Load_ParsesNumbersCultureIndependent()
+        {
+            CultureInfo previous = CultureInfo.CurrentCulture;
+            try
+            {
+                CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+                BrickStoreInventoryItem item = BrickStoreInventory.Load(_path).Items[0];
+
+                Assert.AreEqual(0.125m, item.Price);
+                Assert.AreEqual(42, item.Quantity);
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = previous;
+            }
         }
     }
 }

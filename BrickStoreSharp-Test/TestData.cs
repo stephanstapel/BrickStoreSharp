@@ -70,6 +70,24 @@ namespace BrickStoreSharp_Test
             """;
 
 
+        /// <summary>
+        /// Item with a type code this library does not know (BrickLink's unsorted lot)
+        /// </summary>
+        public const string InventoryWithUnknownItemType = """
+            <BrickStoreXML>
+              <Inventory>
+                <Item>
+                  <ItemID>12345</ItemID>
+                  <ItemTypeID>U</ItemTypeID>
+                  <ItemTypeName>Unsorted Lot</ItemTypeName>
+                  <ColorID>0</ColorID>
+                  <Qty>1</Qty>
+                </Item>
+              </Inventory>
+            </BrickStoreXML>
+            """;
+
+
         public static string CreateTempFile(string content)
         {
             string path = Path.Combine(Path.GetTempPath(), $"BrickStoreSharp-Test-{Guid.NewGuid():N}.bsx");
