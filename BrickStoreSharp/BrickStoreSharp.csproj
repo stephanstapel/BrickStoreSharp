@@ -2,42 +2,75 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
-    <PackageReleaseNotes>1.2.0:
-* Targets .NET Standard 2.0, .NET 8 and .NET 10
-* Fixed endless recursion when loading from a stream
-* Fixed file handles not being released
-* Prices are written culture-invariant (prices &gt;= 1000 were corrupted)
-* Status, condition, item type and sub condition are written as BrickStore codes
-* Currency and BrickLinkChangelogId are read/written as attributes of &lt;Inventory&gt;
-* All supported item fields survive save/load; default values and empty elements are no longer written
-* New item properties Reserved, Cost, TotalWeight, MarkerText and MarkerColor
-* Elements not interpreted by the library (e.g. DifferenceBaseValues, GuiState) are kept in AdditionalElements and written back unchanged
-* Inventory comment is read back when loading
-* Saving to a file writes a temporary file first, an existing file is never destroyed by a failed save
-* Invalid XML characters throw on save instead of producing unreadable files
-* Prices and cost are no longer rounded to four decimals
-* Item types unknown to the library are written back unchanged
-* Faster loading: each item is read in a single pass
-* External entities are never resolved when loading
-* Breaking: synchronous Load/Save throw the original exception instead of AggregateException; missing text elements load as null
-1.0.0: Initial version</PackageReleaseNotes>
+    <AssemblyName>BrickStoreSharp</AssemblyName>
+    <Version>1.2.0</Version>
     <AssemblyVersion>1.2.0</AssemblyVersion>
     <FileVersion>1.2.0</FileVersion>
-    <AssemblyName>BrickStoreSharp</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- not every public member is documented yet -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Label="NuGet">
     <PackageId>BrickStoreSharp</PackageId>
     <Authors>Stephan Stapel</Authors>
+    <Copyright>Copyright (c) Stephan Stapel</Copyright>
+    <Description>BrickStoreSharp is a .NET library for reading and writing BrickStore inventory files (*.bsx, https://github.com/rgriebl/brickstore), e.g. to manage LEGO brick inventories for BrickLink and Brick Owl.
+
+Features
+* Read and write BrickStore inventory files following BrickStore's BrickStoreXML schema
+* Lossless load/save: elements the library does not interpret (e.g. GuiState, DifferenceBaseValues) are written back unchanged
+* Typed access to items: type, color, condition, status, quantity, prices, tiered prices, cost, weight, stockroom, markers and more
+* Culture-independent number handling and safe saving that never destroys an existing file
+* Compatible with .NET Standard 2.0, .NET 8 and .NET 10</Description>
+    <PackageTags>brickstore;bricklink;brickowl;lego;inventory;bsx;xml</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/stephanstapel/BrickStoreSharp</PackageProjectUrl>
     <RepositoryUrl>https://github.com/stephanstapel/BrickStoreSharp</RepositoryUrl>
-    <Description>BrickStoreSharp is a .NET library designed for handling BrickStore inventory files with ease and efficiency. This library allows users to read and write BrickStore inventory files (https://github.com/rgriebl/brickstore), providing a streamlined approach for managing and manipulating LEGO brick inventories. Features
-* Read and write BrickStore inventory files
-* Compatible with .NET Standard 2.0, .NET 8 and .NET 10
-* Simple and intuitive API
-
-Find more about the library here:
-https://github.com/stephanstapel/BrickStoreSharp</Description>
-    <IncludeSymbols>True</IncludeSymbols>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Version>1.2.0</Version>
+    <PackageReleaseNotes>1.2.0
+New
+* Targets .NET Standard 2.0, .NET 8 and .NET 10
+* New item properties Reserved, Cost, TotalWeight, MarkerText and MarkerColor
+* Elements not interpreted by the library (e.g. DifferenceBaseValues, GuiState) are kept in AdditionalElements and written back unchanged
+* Item types unknown to the library are written back unchanged
+* Inventory comment is read back when loading
+* Faster loading: each item is read in a single pass
+
+Fixed
+* Endless recursion when loading from a stream
+* File handles not being released after loading
+* Prices of 1000 and more were written in a corrupted format; numbers are now written culture-invariant and without rounding
+* Status, condition, item type and sub condition are written as BrickStore codes (I/X/E, N/U, ...)
+* Currency and BrickLinkChangelogId are read and written as attributes of &lt;Inventory&gt;
+* Category, comments, retain, bulk, sale, stockroom, sub condition and tiered prices are no longer lost on save/load
+* Default values and empty elements are no longer written
+* Saving to a file writes a temporary file first, an existing file is never destroyed by a failed save
+* Invalid XML characters throw on save instead of producing unreadable files
+* External entities are never resolved when loading (XXE)
+
+Breaking changes
+* Synchronous Load/Save throw the original exception instead of an AggregateException
+* Missing text elements load as null instead of an empty string
+* Items without color are written with ColorID 0 (BrickLink's 'Not Applicable'), as ColorID is required by BrickStore
+
+1.1.0
+* More complete mapping of item fields, type safety enhancements and bug fixes
+
+1.0.0
+* Initial version</PackageReleaseNotes>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>
