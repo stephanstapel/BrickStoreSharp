@@ -28,26 +28,4 @@ namespace BrickStoreSharp
         New,
         Used
     }
-
-
-    public static class ConditionCodesExtensions
-    {
-        public static ConditionCodes FromString(this ConditionCodes _c, string s)
-        {
-            switch (s)
-            {
-                case "New":
-                case "N": return ConditionCodes.New;
-                case "Used":
-                case "U": return ConditionCodes.Used;
-                default: return ConditionCodes.Unknown;
-            }
-        } // !FromString()
-
-
-        public static string EnumToString(this ConditionCodes c)
-        {
-            return c.ToString("g");
-        } // !ToString()
-    }
 }

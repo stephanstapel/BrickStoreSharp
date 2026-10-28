@@ -17,6 +17,8 @@
  * under the License.
  */
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,17 +30,13 @@ namespace BrickStoreSharp
     {
         internal static BrickStoreInventory Load(string filename)
         {
-            Task<BrickStoreInventory> t = LoadAsync(filename);
-            t.Wait();
-            return t.Result;
+            return LoadAsync(filename).GetAwaiter().GetResult();
         } // !Load()
 
 
         internal static BrickStoreInventory Load(Stream stream)
         {
-            Task<BrickStoreInventory> t = LoadAsync(stream);
-            t.Wait();
-            return t.Result;
+            return LoadAsync(stream).GetAwaiter().GetResult();
         } // !Load()
 
 
@@ -49,66 +47,181 @@ namespace BrickStoreSharp
                 throw new IllegalStreamException("Cannot read from stream");
             }
 
-            // read the file            
-            XmlDocument doc = new XmlDocument();
-            doc.Load(stream);
-
-            BrickStoreInventory retval = new BrickStoreInventory()
+            // read the file, DTDs are not needed and must not resolve external entities
+            XmlReaderSettings settings = new XmlReaderSettings()
             {
-                Currency = XmlUtils.NodeAsString(doc.DocumentElement, "./Currency"),
-                BrickLinkChangelogId = XmlUtils.NodeAsInt(doc.DocumentElement, "./BrickLinkChangelogId")
+                DtdProcessing = DtdProcessing.Ignore,
+                XmlResolver = null
             };
 
-            foreach(XmlNode itemNode in doc.DocumentElement.SelectNodes("./Inventory/Item"))
+            XmlDocument doc = new XmlDocument() { XmlResolver = null };
+            using (XmlReader reader = XmlReader.Create(stream, settings))
             {
-                BrickStoreInventoryItem item = new BrickStoreInventoryItem()
-                {
-                    Id = XmlUtils.NodeAsString(itemNode, "./ItemID"),
-                    ItemType = _mapItemType(XmlUtils.NodeAsString(itemNode, "./ItemTypeID")),
-                    ColorId = XmlUtils.NodeAsInt(itemNode, "./ColorID"),
-                    Name = XmlUtils.NodeAsString(itemNode, "./ItemName"),
-                    ColorName = XmlUtils.NodeAsString(itemNode, "./ColorName"),
-                    Status = default(StatusCodes).FromString(XmlUtils.NodeAsString(itemNode, "./Status")),
-                    Quantity = XmlUtils.NodeAsInt(itemNode, "./Qty"),
-                    Price = XmlUtils.NodeAsDecimal(itemNode, "./Price"),
-                    Condition = default(ConditionCodes).FromString(XmlUtils.NodeAsString(itemNode, "./Condition")),
-                    Remarks = XmlUtils.NodeAsString(itemNode, "./Remarks"),
-                    LotId = XmlUtils.NodeAsInt(itemNode, "./LotID"),
-                    OwlId = XmlUtils.NodeAsString(itemNode, "./OwlID"),
-                    OwlLotId = XmlUtils.NodeAsInt(itemNode, "./OwlLotID")
-                };
-
-                retval.Items.Add(item);
+                doc.Load(reader);
             }
+
+            // Currency and BrickLinkChangelogId are attributes of <Inventory>, see BrickStoreXML.rnc
+            XmlNode inventoryNode = doc.DocumentElement.SelectSingleNode("./Inventory");
+            BrickStoreInventory retval = new BrickStoreInventory()
+            {
+                // the writer stores Comment as XML comment in front of the root element
+                Comment = doc.ChildNodes.OfType<XmlNode>().TakeWhile(n => n != doc.DocumentElement).OfType<XmlComment>().FirstOrDefault()?.Value
+            };
+
+            // elements not interpreted by this library are imported into a separate document,
+            // so the loaded document does not stay in memory as long as the inventory is used
+            XmlDocument additionalElementsOwner = new XmlDocument();
+
+            if (inventoryNode != null)
+            {
+                retval.Currency = XmlUtils.AttributeText(inventoryNode, "Currency", null);
+                if (Int32.TryParse(XmlUtils.AttributeText(inventoryNode, "BrickLinkChangelogId"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int changelogId))
+                {
+                    retval.BrickLinkChangelogId = changelogId;
+                }
+
+                foreach (XmlElement itemNode in inventoryNode.ChildNodes.OfType<XmlElement>().Where(e => e.Name == "Item"))
+                {
+                    retval.Items.Add(_readItem(itemNode, additionalElementsOwner));
+                }
+            }
+
+            // e.g. GuiState, kept to not lose it on save
+            retval.AdditionalElements = doc.DocumentElement.ChildNodes.OfType<XmlElement>()
+                                                           .Where(e => e != inventoryNode)
+                                                           .Select(e => (XmlElement)additionalElementsOwner.ImportNode(e, true))
+                                                           .ToList();
 
             return retval;
         } // !LoadAsync()
 
-        private static ItemTypes _mapItemType(string itemType)
+
+        /// <summary>
+        /// Reads all child elements of an item in a single pass. Every element that is mapped to a property is
+        /// consumed, all remaining elements are kept in AdditionalElements and written back unchanged.
+        /// </summary>
+        private static BrickStoreInventoryItem _readItem(XmlElement itemNode, XmlDocument additionalElementsOwner)
         {
-            switch (itemType.ToLower())
+            Dictionary<string, XmlElement> elements = new Dictionary<string, XmlElement>();
+            foreach (XmlElement element in itemNode.ChildNodes.OfType<XmlElement>())
             {
-                case "b": return ItemTypes.Book;
-                case "c": return ItemTypes.Catalog;
-                case "g": return ItemTypes.Gear;
-                case "i": return ItemTypes.Instruction;
-                case "m": return ItemTypes.Minifigure;
-                case "o": return ItemTypes.OriginalBox;
-                case "p": return ItemTypes.Part;
-                case "s": return ItemTypes.Set;                
+                if (!elements.ContainsKey(element.Name))
+                {
+                    elements.Add(element.Name, element);
+                }
             }
-            return ItemTypes.Unknown;
-        } // !_mapItemType()
+
+            HashSet<XmlElement> consumed = new HashSet<XmlElement>();
+
+            bool exists(string name)
+            {
+                if (elements.TryGetValue(name, out XmlElement element))
+                {
+                    consumed.Add(element);
+                    return true;
+                }
+                return false;
+            }
+
+            string text(string name)
+            {
+                return elements.TryGetValue(name, out XmlElement element) && consumed.Add(element) ? element.InnerText : null;
+            }
+
+            int? integer(string name)
+            {
+                return Int32.TryParse(text(name), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) ? value : (int?)null;
+            }
+
+            decimal? number(string name)
+            {
+                return Decimal.TryParse(text(name), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal value) ? value : (decimal?)null;
+            }
+
+            BrickStoreInventoryItem item = new BrickStoreInventoryItem()
+            {
+                Id = text("ItemID"),
+                ColorId = integer("ColorID"),
+                Name = text("ItemName"),
+                ColorName = text("ColorName"),
+                CategoryId = integer("CategoryID") ?? 0,
+                CategoryName = text("CategoryName"),
+                Status = default(StatusCodes).FromString(text("Status")),
+                Quantity = integer("Qty"),
+                Price = number("Price"),
+                Condition = default(ConditionCodes).FromString(text("Condition")),
+                Comments = text("Comments"),
+                Remarks = text("Remarks"),
+                Retain = exists("Retain"),
+                Reserved = text("Reserved"),
+                LotId = integer("LotID"),
+                OwlId = text("OwlID"),
+                OwlLotId = integer("OwlLotID"),
+                TotalWeight = number("TotalWeight"),
+                Cost = number("Cost"),
+                SubCondition = default(SubConditions).FromCode(text("SubCondition")),
+                Stockroom = text("Stockroom"),
+                MarkerText = text("MarkerText"),
+                MarkerColor = text("MarkerColor")
+            };
+
+            // item types this library does not know (e.g. a new BrickLink type) are kept unchanged
+            // in AdditionalElements instead of being written back as an empty ItemTypeID
+            string itemTypeCode = elements.TryGetValue("ItemTypeID", out XmlElement itemTypeElement) ? itemTypeElement.InnerText : null;
+            item.ItemType = default(ItemTypes).FromCode(itemTypeCode);
+            if ((item.ItemType != ItemTypes.Unknown) || String.IsNullOrEmpty(itemTypeCode))
+            {
+                exists("ItemTypeID");
+                exists("ItemTypeName"); // derived from ItemType when writing
+            }
+
+            // keep the item's defaults if the optional elements are missing
+            int? bulk = integer("Bulk");
+            if (bulk.HasValue)
+            {
+                item.Bulk = bulk.Value;
+            }
+
+            int? sale = integer("Sale");
+            if (sale.HasValue)
+            {
+                item.Sale = sale.Value;
+            }
+
+            int? tq1 = integer("TQ1");
+            int? tq2 = integer("TQ2");
+            int? tq3 = integer("TQ3");
+            decimal? tp1 = number("TP1");
+            decimal? tp2 = number("TP2");
+            decimal? tp3 = number("TP3");
+            if (tq1.HasValue || tq2.HasValue || tq3.HasValue)
+            {
+                item.TieredPrice = new TieredPrice()
+                {
+                    TieredQuantity1 = tq1 ?? 0,
+                    TieredPrice1 = tp1 ?? 0m,
+                    TieredQuantity2 = tq2 ?? 0,
+                    TieredPrice2 = tp2 ?? 0m,
+                    TieredQuantity3 = tq3 ?? 0,
+                    TieredPrice3 = tp3 ?? 0m
+                };
+            }
+
+            item.AdditionalElements = itemNode.ChildNodes.OfType<XmlElement>()
+                                                         .Where(e => !consumed.Contains(e))
+                                                         .Select(e => (XmlElement)additionalElementsOwner.ImportNode(e, true))
+                                                         .ToList();
+            return item;
+        } // !_readItem()
 
 
         internal static async Task<BrickStoreInventory> LoadAsync(string filename)
         {
-            if (!System.IO.File.Exists(filename))
+            // throws FileNotFoundException including the file name if the file does not exist
+            using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
             {
-                throw new FileNotFoundException();
+                return await LoadAsync(fs);
             }
-
-            return await LoadAsync(new FileStream(filename, FileMode.Open, FileAccess.Read));
         } // !LoadAsync()
     }
 }

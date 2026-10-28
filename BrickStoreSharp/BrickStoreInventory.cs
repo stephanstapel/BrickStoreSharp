@@ -22,6 +22,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace BrickStoreSharp
@@ -33,11 +34,17 @@ namespace BrickStoreSharp
         public string Currency { get; set; }
         public int? BrickLinkChangelogId { get; set; }
 
+        /// <summary>
+        /// Elements next to the inventory this library does not interpret (e.g. BrickStore's GuiState).
+        /// They are read and written unchanged so no data gets lost on save.
+        /// </summary>
+        public List<XmlElement> AdditionalElements { get; set; } = new List<XmlElement>();
+
 
 
         public async static Task<BrickStoreInventory> LoadAsync(Stream stream)
         {
-            return await BrickStoreInventory.LoadAsync(stream);
+            return await BrickStoreReader.LoadAsync(stream);
         } // !Load()
 
 
@@ -49,17 +56,13 @@ namespace BrickStoreSharp
 
         public static BrickStoreInventory Load(Stream stream)
         {
-            Task<BrickStoreInventory> t = LoadAsync(stream);
-            t.Wait();
-            return t.Result;
+            return LoadAsync(stream).GetAwaiter().GetResult();
         } // !Load()
 
 
         public static BrickStoreInventory Load(string filename)
         {
-            Task<BrickStoreInventory> t = LoadAsync(filename);
-            t.Wait();
-            return t.Result;
+            return LoadAsync(filename).GetAwaiter().GetResult();
         } // !Load()
 
 
@@ -79,15 +82,13 @@ namespace BrickStoreSharp
 
         public void Save(Stream stream)
         {
-            Task t = SaveAsync(stream);
-            t.Wait();
+            SaveAsync(stream).GetAwaiter().GetResult();
         } // !Save()
 
 
         public void Save(string filename)
         {
-            Task t = SaveAsync(filename);
-            t.Wait();
+            SaveAsync(filename).GetAwaiter().GetResult();
         } // !Save()
     }
 }

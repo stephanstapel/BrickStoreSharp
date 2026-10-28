@@ -18,8 +18,9 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
-using System.Security.Cryptography;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -28,6 +29,11 @@ namespace BrickStoreSharp
 {
     internal class BrickStoreWriter
     {
+        /// <summary>
+        /// At least four decimals like BrickStore, but never rounds away more precise values
+        /// </summary>
+        private const string _PriceFormat = "0.0000########################";
+
         internal async Task SaveAsync(BrickStoreInventory inventory, Stream stream)
         {
             if (!stream.CanWrite || !stream.CanSeek)
@@ -38,8 +44,15 @@ namespace BrickStoreSharp
             long streamPosition = stream.Position;
 
             
-            XmlTextWriter writer = new XmlTextWriter(stream, Encoding.UTF8);
-            writer.Formatting = Formatting.Indented;
+            // XmlWriter.Create checks characters and comments, so invalid input throws instead of producing unreadable files
+            XmlWriterSettings settings = new XmlWriterSettings()
+            {
+                Encoding = Encoding.UTF8,
+                Indent = true,
+                CloseOutput = false
+            };
+
+            XmlWriter writer = XmlWriter.Create(stream, settings);
             writer.WriteStartDocument();
 
             #region XML-Kopfbereich
@@ -50,28 +63,47 @@ namespace BrickStoreSharp
             writer.WriteDocType("BrickStoreXML", null, null, null);
             writer.WriteStartElement("BrickStoreXML");
             writer.WriteStartElement("Inventory");
+
+            // Currency and BrickLinkChangelogId are attributes of <Inventory>, see BrickStoreXML.rnc
+            if (!String.IsNullOrWhiteSpace(inventory.Currency))
+            {
+                writer.WriteAttributeString("Currency", inventory.Currency);
+            }
+
+            if (inventory.BrickLinkChangelogId.HasValue)
+            {
+                writer.WriteAttributeString("BrickLinkChangelogId", inventory.BrickLinkChangelogId.Value.ToString(CultureInfo.InvariantCulture));
+            }
             #endregion // !XML Header                       
 
             foreach (BrickStoreInventoryItem item in inventory.Items)
             {
                 writer.WriteStartElement("Item");
                 writer.WriteElementString("ItemID", item.Id);
-                writer.WriteElementString("ItemTypeID", _mapItemType(item.ItemType));
-
-                if (item.ColorId.HasValue)
+                // an item type unknown to this library is kept in AdditionalElements by the reader
+                if ((item.ItemType != ItemTypes.Unknown) || !_containsElement(item.AdditionalElements, "ItemTypeID"))
                 {
-                    writer.WriteElementString("ColorID", $"{item.ColorId}");
+                    writer.WriteElementString("ItemTypeID", item.ItemType.ToCode());
                 }
 
-                writer.WriteElementString("ItemName", item.Name);
-                writer.WriteElementString("ItemTypeName", _mapItemTypeName(item.ItemType));
-                writer.WriteElementString("ColorName", item.ColorName);
-                writer.WriteElementString("CategoryID", $"{item.CategoryId}");
-                writer.WriteElementString("CategoryName", item.CategoryName);
+                // ColorID is required by BrickStoreXML.rnc, 0 is BrickLink's '(Not Applicable)' color
+                writer.WriteElementString("ColorID", (item.ColorId ?? 0).ToString(CultureInfo.InvariantCulture));
+
+                // optional elements: BrickStoreXML.rnc asks not to write them if they equal the default value
+                _writeOptionalElement(writer, "ItemName", item.Name);
+                _writeOptionalElement(writer, "ItemTypeName", item.ItemType.ToName());
+                _writeOptionalElement(writer, "ColorName", item.ColorName);
+
+                if (item.CategoryId != 0)
+                {
+                    writer.WriteElementString("CategoryID", item.CategoryId.ToString(CultureInfo.InvariantCulture));
+                }
+
+                _writeOptionalElement(writer, "CategoryName", item.CategoryName);
 
                 if (item.Status != StatusCodes.Unknown)
                 {
-                    writer.WriteElementString("Status", item.Status.EnumToString());
+                    writer.WriteElementString("Status", item.Status.ToCode());
                 }
 
                 if (item.Quantity.HasValue)
@@ -81,22 +113,26 @@ namespace BrickStoreSharp
 
                 if (item.Price.HasValue)
                 {
-                    writer.WriteElementString("Price", item.Price.Value.ToString("N4").Replace(",", "."));
+                    writer.WriteElementString("Price", item.Price.Value.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                 }
 
-                writer.WriteElementString("Condition", item.Condition.EnumToString());
-                writer.WriteElementString("Bulk", $"{item.Bulk}");
-                writer.WriteElementString("Sale", $"{item.Sale}");
-
-                if (!String.IsNullOrWhiteSpace(item.Comments))
+                if (item.Condition != ConditionCodes.Unknown)
                 {
-                    writer.WriteElementString("Comments", item.Comments);
+                    writer.WriteElementString("Condition", item.Condition.ToCode());
                 }
 
-                if (!String.IsNullOrWhiteSpace(item.Remarks))
+                if (item.Bulk != 1)
                 {
-                    writer.WriteElementString("Remarks", item.Remarks);
+                    writer.WriteElementString("Bulk", item.Bulk.ToString(CultureInfo.InvariantCulture));
                 }
+
+                if (item.Sale != 0)
+                {
+                    writer.WriteElementString("Sale", item.Sale.ToString(CultureInfo.InvariantCulture));
+                }
+
+                _writeOptionalElement(writer, "Comments", item.Comments);
+                _writeOptionalElement(writer, "Remarks", item.Remarks);
 
                 if (item.Retain)
                 {
@@ -104,45 +140,66 @@ namespace BrickStoreSharp
                     writer.WriteEndElement();
                 }
 
-                writer.WriteElementString("LotID", $"{item.LotId}");
-                writer.WriteElementString("OwlID", $"{item.OwlId}");
-                writer.WriteElementString("OwlLotID", $"{item.OwlLotId}");
+                if (item.LotId.HasValue && item.LotId.Value != 0)
+                {
+                    writer.WriteElementString("LotID", item.LotId.Value.ToString(CultureInfo.InvariantCulture));
+                }
+
+                _writeOptionalElement(writer, "OwlID", item.OwlId);
+
+                if (item.OwlLotId.HasValue)
+                {
+                    writer.WriteElementString("OwlLotID", item.OwlLotId.Value.ToString(CultureInfo.InvariantCulture));
+                }
 
                 if (item.TieredPrice != null)
                 {
                     if (item.TieredPrice.TieredQuantity1 != 0)
                     {
                         writer.WriteElementString("TQ1", $"{item.TieredPrice.TieredQuantity1}");
-                        writer.WriteElementString("TP1", item.TieredPrice.TieredPrice1.ToString("N4").Replace(",", "."));
+                        writer.WriteElementString("TP1", item.TieredPrice.TieredPrice1.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                     }
 
                     if (item.TieredPrice.TieredQuantity2 != 0)
                     {
                         writer.WriteElementString("TQ2", $"{item.TieredPrice.TieredQuantity2}");
-                        writer.WriteElementString("TP2", item.TieredPrice.TieredPrice2.ToString("N4").Replace(",", "."));
+                        writer.WriteElementString("TP2", item.TieredPrice.TieredPrice2.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                     }
 
                     if (item.TieredPrice.TieredQuantity3 != 0)
                     {
                         writer.WriteElementString("TQ3", $"{item.TieredPrice.TieredQuantity3}");
-                        writer.WriteElementString("TP3", item.TieredPrice.TieredPrice3.ToString("N4").Replace(",", "."));
+                        writer.WriteElementString("TP3", item.TieredPrice.TieredPrice3.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                     }
                 }
 
-                if (!String.IsNullOrWhiteSpace(_mapSubCondition(item.SubCondition)))
+                if (item.SubCondition != SubConditions.Unknown)
                 {
-                    writer.WriteElementString("SubCondition", _mapSubCondition(item.SubCondition));
+                    writer.WriteElementString("SubCondition", item.SubCondition.ToCode());
                 }
 
-                if (!String.IsNullOrWhiteSpace(item.Stockroom))
+                _writeOptionalElement(writer, "Stockroom", item.Stockroom);
+                _writeOptionalElement(writer, "Reserved", item.Reserved);
+
+                if (item.Cost.HasValue)
                 {
-                    writer.WriteElementString("Stockroom", item.Stockroom);
+                    writer.WriteElementString("Cost", item.Cost.Value.ToString(_PriceFormat, CultureInfo.InvariantCulture));
                 }
+
+                if (item.TotalWeight.HasValue)
+                {
+                    writer.WriteElementString("TotalWeight", item.TotalWeight.Value.ToString(CultureInfo.InvariantCulture));
+                }
+
+                _writeOptionalElement(writer, "MarkerText", item.MarkerText);
+                _writeOptionalElement(writer, "MarkerColor", item.MarkerColor);
+                _writeAdditionalElements(writer, item.AdditionalElements);
 
                 writer.WriteEndElement(); // !Item
             }
 
             writer.WriteEndElement(); // !Inventory
+            _writeAdditionalElements(writer, inventory.AdditionalElements);
             writer.WriteEndElement(); // !BrickStoreXML
             writer.WriteEndDocument();
             writer.Flush();
@@ -153,58 +210,64 @@ namespace BrickStoreSharp
         } // !SaveAsync()
 
 
-        private string _mapSubCondition(SubConditions subcondition)
+        private static bool _containsElement(List<XmlElement> elements, string name)
         {
-            switch (subcondition)
-            {        
-                case SubConditions.Complete: return "C";
-                case SubConditions.Incomplete: return "I";
-                case SubConditions.Sealed: return "M";
-            }
-            return String.Empty;
-        } // !_mapSubCondition()
+            return (elements != null) && elements.Any(e => (e != null) && (e.Name == name));
+        } // !_containsElement()
 
 
-        private string _mapItemType(ItemTypes itemType)
+        private static void _writeOptionalElement(XmlWriter writer, string name, string value)
         {
-            switch (itemType)
+            if (!String.IsNullOrWhiteSpace(value))
             {
-                case ItemTypes.Book: return "B";
-                case ItemTypes.Catalog: return "C";
-                case ItemTypes.Gear: return "G";
-                case ItemTypes.Instruction: return "I";
-                case ItemTypes.Minifigure: return "M";
-                case ItemTypes.OriginalBox: return "O";
-                case ItemTypes.Part: return "P";
-                case ItemTypes.Set: return "S";
-                default: return ""; // oder eine andere Standardbehandlung
+                writer.WriteElementString(name, value);
             }
-        } // !_mapItemType()
+        } // !_writeOptionalElement()
 
 
-        private string _mapItemTypeName(ItemTypes itemType)
+        private static void _writeAdditionalElements(XmlWriter writer, List<XmlElement> elements)
         {
-            switch (itemType)
+            if (elements == null)
             {
-                case ItemTypes.Book: return "Book";
-                case ItemTypes.Catalog: return "Catalog";
-                case ItemTypes.Gear: return "Gear";
-                case ItemTypes.Instruction: return "Instruction";
-                case ItemTypes.Minifigure: return "Minifig";
-                case ItemTypes.OriginalBox: return "OriginalBox";
-                case ItemTypes.Part: return "Part";
-                case ItemTypes.Set: return "Set";
-                default: return ""; // oder eine andere Standardbehandlung
+                return;
             }
-        } // !_mapItemTypeName()
+
+            foreach (XmlElement element in elements.Where(e => e != null))
+            {
+                element.WriteTo(writer);
+            }
+        } // !_writeAdditionalElements()
 
 
         public async Task SaveAsync(BrickStoreInventory inventory, string filename)
         {
-            FileStream fs = new FileStream(filename, FileMode.Create, FileAccess.Write);
-            await SaveAsync(inventory, fs);
-            fs.Flush();
-            fs.Close();
+            // write to a temporary file first, so an existing file is not destroyed if writing fails
+            string fullPath = Path.GetFullPath(filename);
+            string tempPath = Path.Combine(Path.GetDirectoryName(fullPath), $"{Path.GetFileName(fullPath)}.{Guid.NewGuid():N}.tmp");
+            try
+            {
+                using (FileStream fs = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write))
+                {
+                    await SaveAsync(inventory, fs);
+                    fs.Flush();
+                }
+
+                if (File.Exists(fullPath))
+                {
+                    File.Replace(tempPath, fullPath, null);
+                }
+                else
+                {
+                    File.Move(tempPath, fullPath);
+                }
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
         } // !SaveAsync()
     }
 }

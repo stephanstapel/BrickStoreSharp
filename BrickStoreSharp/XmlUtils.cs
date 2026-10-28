@@ -99,10 +99,6 @@ namespace BrickStoreSharp
             {
                 return defaultValue;
             }
-            catch (Exception ex)
-            {
-                throw ex;
-            };
         } // NodeAsString()
 
 
@@ -126,12 +122,6 @@ namespace BrickStoreSharp
             {
                 return defaultValue;
             }
-            catch (Exception ex)
-            {
-                throw ex;
-            };
-
-            return defaultValue;
         } // NodesAsStrings()
 
 
@@ -190,7 +180,7 @@ namespace BrickStoreSharp
             }
             else
             {
-                string format = "yyyy-MM-ddThh:mm:sszzz";
+                string format = "yyyy-MM-ddTHH:mm:sszzz";
                 CultureInfo provider = CultureInfo.InvariantCulture;
                 if (DateTime.TryParseExact(temp, format, provider, DateTimeStyles.None, out retval))
                 {

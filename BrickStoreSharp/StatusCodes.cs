@@ -29,25 +29,4 @@ namespace BrickStoreSharp
         Exclude,
         Extra
     }
-
-
-    public static class StatusCodesExtensions
-    {
-        public static StatusCodes FromString(this StatusCodes _c, string s)
-        {
-            switch (s)
-            {
-                case "I": return StatusCodes.Include;
-                case "X": return StatusCodes.Exclude;
-                case "E": return StatusCodes.Extra;
-                default: return StatusCodes.Unknown;
-            }
-        } // !FromString()
-
-
-        public static string EnumToString(this StatusCodes c)
-        {
-            return c.ToString("g");
-        } // !ToString()
-    }
 }

@@ -2,9 +2,9 @@ name: .NET
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -12,11 +12,13 @@ jobs:
     runs-on: ubuntu-latest
  
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Setup .NET
-      uses: actions/setup-dotnet@v2
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: |
+          8.0.x
+          10.0.x
     - name: Restore dependencies test
       run: dotnet restore BrickStoreSharp-Test/BrickStoreSharp-Test.csproj
     - name: Build test
@@ -27,3 +29,19 @@ jobs:
       run: dotnet restore BrickStoreSharp/BrickStoreSharp.csproj
     - name: Build library
       run: dotnet build BrickStoreSharp/BrickStoreSharp.csproj --no-restore
+
+  # runs the netstandard2.0 build of the library on .NET Framework (net48 test target, Windows only)
+  test-netframework:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          8.0.x
+          10.0.x
+    - name: Test on .NET Framework
+      run: dotnet test BrickStoreSharp-Test/BrickStoreSharp-Test.csproj -f net48 --verbosity normal
